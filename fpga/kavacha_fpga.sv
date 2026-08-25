@@ -27,7 +27,8 @@ module kavacha_fpga
   parameter int CLK_HZ     = 50_000_000,
   parameter int UART_BAUD  = 115_200,
   parameter int MEM_WORDS  = 32768,         // 128 KB unified RAM (distributed)
-  parameter     MEMFILE    = ""             // firmware .mem ($readmemh) for synthesis
+  parameter     MEMFILE    = "",            // firmware .mem ($readmemh) for synthesis
+  parameter bit SECURE     = 1'b0
 )(
   input  wire        clk,
   input  wire        rst,
@@ -75,7 +76,7 @@ module kavacha_fpga
   wire        irq_timer = (mtime >= mtimecmp);
   wire        irq_soft  = msip;
 
-  kavacha_core u_core (
+  kavacha_core #(.SECURE(SECURE)) u_core (
     .clk(clk), .rst(core_rst),
     .imem_addr(imem_addr), .imem_rdata(imem_rdata),
     .dmem_addr(dmem_addr), .dmem_re(dmem_re), .dmem_we(dmem_we),
