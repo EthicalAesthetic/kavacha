@@ -171,9 +171,9 @@ Simulated on the Verilator cycle-accurate model.
 | Metric | Value |
 |--------|-------|
 | Iterations | 1000 |
-| Total cycles | 847,547,135 |
-| Cycles / iteration | 847,547.1 |
-| CoreMark / MHz | **1.1799** |
+| Total cycles | 7,852,705 |
+| Cycles / iteration | 785,270.5 |
+| CoreMark / MHz | **1.1734** |
 | Status | ✅ PASS |
 
 ### Dhrystone v2.1
