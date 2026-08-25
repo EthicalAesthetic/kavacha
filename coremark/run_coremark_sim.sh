@@ -6,35 +6,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 KAVACHA_DIR="$(dirname "$SCRIPT_DIR")"
 VERIF_TOOLS_DIR="$KAVACHA_DIR/verification/tools"
 
-# Add bundled tools to PATH (if present); fall back to system toolchain
+# Add tools to PATH
 export PATH="$VERIF_TOOLS_DIR/gcc/bin:$VERIF_TOOLS_DIR/verilator/bin:$PATH"
-
-# Detect RISC-V GCC (same fallback chain as dhrystone/run_dhrystone.sh)
-if command -v riscv-none-elf-gcc &>/dev/null; then
-    RISCV_GCC="riscv-none-elf-gcc"
-elif command -v riscv64-elf-gcc &>/dev/null; then
-    RISCV_GCC="riscv64-elf-gcc"
-elif command -v riscv64-unknown-elf-gcc &>/dev/null; then
-    RISCV_GCC="riscv64-unknown-elf-gcc"
-else
-    echo "ERROR: No RISC-V GCC found. Install riscv-none-elf-gcc or riscv64-elf-gcc."
-    exit 1
-fi
-echo "[BUILD] Toolchain: $RISCV_GCC"
 
 # Move to bench directory
 cd "$KAVACHA_DIR/bench"
 
 echo "========================================="
 echo " Building and Running CoreMark Simulation"
-echo " (1,000 iterations: ~785M cycles, approx. 3–6 mins)"
+echo " (1,000 iterations: ~785M cycles, approx. 10-15 mins)"
 echo "========================================="
 
 # Clean previous builds
 rm -f build/coremark.hex build/coremark.elf
 
 # Build CoreMark (reduced iterations for fast sim)
-make coremark ITERATIONS=1000 RISCV_GCC="$RISCV_GCC"
+make coremark ITERATIONS=1000 RISCV_GCC=riscv-none-elf-gcc
 
 # Run simulation
 make run-kavacha-coremark TIMEOUT_CYCLES=5000000000

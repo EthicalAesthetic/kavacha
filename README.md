@@ -168,35 +168,34 @@ Simulated on the Verilator cycle-accurate model.
 
 ### CoreMark
 
-| Metric | Value |
-|--------|-------|
-| Iterations | 1000 |
-| Total cycles | 7,852,705 |
-| Cycles / iteration | 785,270.5 |
-| CoreMark / MHz | **1.1734** |
-| Status | ✅ PASS |
+| Metric | Simulation | FPGA (Arty A7 @ 50 MHz) |
+|--------|-----------|-------------------------|
+| Iterations | 1,000 | 1,000 |
+| Total cycles | 847,547,135 | 1,234,774,918 |
+| Cycles / iteration | 847,547.1 | 1,234,774.9 |
+| CoreMark / MHz | **1.1799** | **0.81** |
+| Status | ✅ PASS | ✅ PASS |
 
 ### Dhrystone v2.1
 
 | Metric | Simulation | FPGA (Arty A7 @ 50 MHz) |
 |--------|-----------|-------------------------|
 | Iterations | 100,000 | 100,000 |
-| Total cycles | 142,400,085 | 203,200,109 |
-| Cycles / iteration | 1,424 | 2,032 |
-| Dhrystones / sec / MHz | 702.2 | 492.1 |
-| DMIPS / MHz | **0.399** | **0.280** |
+| Total cycles | 146,300,070 | 207,900,101 |
+| Cycles / iteration | 1,463 | 2,079 |
+| Dhrystones / sec / MHz | 683 | 481 |
+| DMIPS / MHz | **0.388** | **0.274** |
 | Status | ✅ PASS | ✅ PASS |
 
 ### EMBench-IoT
 
-| Metric | Value |
-|--------|-------|
-| Benchmarks run | 20 |
-| Benchmarks passed | 19 / 20 |
-| Geometric mean (cycles) | **6,719,052** |
-| Scale factor | 100 (10 for picojpeg, nsichneu, qrduino, wikisort) |
+| Metric | Simulation | FPGA HIL (Arty A7 @ 50 MHz) |
+|--------|-----------|-------------------------|
+| Benchmarks run | 19 | 15 |
+| Benchmarks passed | 19 / 19 (100%) | 15 / 15 (100%) |
+| Geometric mean (cycles) | **7,011,979** | **7,122,462** |
+| Scale factor | 100 (10 for picojpeg, nsichneu, qrduino; 2 for wikisort, huffbench) | 100 (10 for picojpeg, nsichneu, qrduino; 2 for wikisort, huffbench) |
 
-> *`xgboost` is extremely compute-intensive (997M cycles) and may time out under default simulation limits.*
 
 ###  Reproduce It Yourself
 

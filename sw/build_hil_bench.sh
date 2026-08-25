@@ -290,6 +290,10 @@ build_embench_one() {
         "-DBENCHMARK_NAME=\"$bname\""
     )
 
+    if [[ "$bname" == "wikisort" ]]; then
+        extra_flags+=("-include" "stdbool.h")
+    fi
+
     build_image "$bname" extra_flags "${srcs[@]}" || {
         echo "[HIL] FAIL: $bname (may overflow 16 KB — try reducing scale)"
         return 0   # don't abort the whole run for one benchmark
