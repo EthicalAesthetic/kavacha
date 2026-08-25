@@ -23,7 +23,9 @@
 // ============================================================================
 `default_nettype none
 
-module kavacha_arty_a7 (
+module kavacha_arty_a7 #(
+  parameter bit SECURE = 1'b0
+)(
   input  wire       CLK100,
   input  wire       ck_rst,        // active-low
   output wire [3:0] led,
@@ -68,7 +70,8 @@ module kavacha_arty_a7 (
   // CLK_HZ must match the actual clock so the UART baud divisor is correct.
   wire [7:0] soc_leds;
   kavacha_fpga #(.CLK_HZ(50_000_000), .UART_BAUD(115_200),
-                 .MEM_WORDS(32768), .MEMFILE("firmware.mem")) u_soc (
+                 .MEM_WORDS(32768), .MEMFILE("firmware.mem"),
+                 .SECURE(SECURE)) u_soc (
       .clk(clk_50), .rst(sys_rst),
       .tck(jtag_tck), .tms(jtag_tms), .tdi(jtag_tdi), .tdo(jtag_tdo),
       .leds(soc_leds), .serial_tx(uart_rxd_out), .serial_rx(uart_txd_in),

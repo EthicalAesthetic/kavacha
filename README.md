@@ -147,14 +147,31 @@ or compile-time define `-DKAVACHA_SECURE`:
 ## FPGA Resource Utilization
 
 > **Target:** Xilinx Artix-7 (Arty A7-100T, `xc7a100tcsg324-1`)
-> Post-synthesis results from Vivado.
+> Post-synthesis & post-implementation results from Vivado 2023.2.
+
+### Standalone Processor Core (`kavacha_core`)
 
 | Configuration | LUTs | FFs | DSPs | BRAMs |
 |---------------|------|-----|------|-------|
-| **Default** | — | — | — | — |
-| **SECURE** | — | — | — | — |
+| **Default** (Machine mode only) | **2,491** | **749** | **4** | **0** |
+| **SECURE** (M+U, PMP/ePMP, ECC) | **4,362** | **1,400** | **4** | **0** |
 
-*Fill in the above values from your Vivado post-synthesis utilization report.*
+### Full Synthesized SoC (`kavacha_arty_a7`)
+
+| Configuration | LUTs | FFs | DSPs | BRAMs (128 KB) | $F_{max}$ | Power |
+|---------------|------|-----|------|----------------|-----------|-------|
+| **Default** | **2,816** | **1,335** | **4** | **32** | **51.01 MHz** | **0.295 W** |
+| **SECURE** | **5,226** | **1,980** | **4** | **32** | **45.67 MHz** | **0.314 W** |
+
+### Core Hierarchical Utilization Breakdown
+
+| Sub-Module / Unit | Description | Default LUTs (FFs) | SECURE LUTs (FFs) |
+|-------------------|-------------|--------------------|-------------------|
+| `kavacha_regfile` | GPR File (32×32-bit, plain vs SECDED ECC) | 1,403 (0 FFs) | 1,596 (0 FFs) |
+| `kavacha_csr` | CSR File (Zicsr, Machine/User, 8-region PMP/ePMP) | 389 (320 FFs) | 2,054 (965 FFs) |
+| `kavacha_muldiv` | 32-bit Iterative Multiply & Divide Engine | 437 (237 FFs) | 458 (237 FFs) |
+| `kavacha_pmp` | Physical Memory Protection Checker | — | 21 (0 FFs) |
+| Control & Exec | FSM, 32-bit ALU, Decoder, RVC Expander, ImmGen | 262 (192 FFs) | 269 (198 FFs) |
 
 ---
 

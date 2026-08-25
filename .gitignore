@@ -31,7 +31,7 @@ Thumbs.db
 venv/
 
 # Arty Build
-fpga/arty_a7/build
+fpga/arty_a7/build*
 fpga/arty_a7/vivado*
 
 # Vivado logs & backups everywhere
