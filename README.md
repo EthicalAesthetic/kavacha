@@ -158,10 +158,10 @@ or compile-time define `-DKAVACHA_SECURE`:
 
 ### Full Synthesized SoC (`kavacha_arty_a7`)
 
-| Configuration | LUTs | FFs | DSPs | BRAMs (128 KB) | $F_{max}$ | Power |
-|---------------|------|-----|------|----------------|-----------|-------|
-| **Default** | **2,816** | **1,335** | **4** | **32** | **51.01 MHz** | **0.295 W** |
-| **SECURE** | **5,226** | **1,980** | **4** | **32** | **45.67 MHz** | **0.314 W** |
+| Configuration | LUTs | FFs | DSPs | BRAMs (128 KB) |
+|---------------|------|-----|------|----------------|
+| **Default** | **2,816** | **1,335** | **4** | **32** |
+| **SECURE** | **5,226** | **1,980** | **4** | **32** |
 
 ### Core Hierarchical Utilization Breakdown
 
@@ -198,10 +198,10 @@ Simulated on the Verilator cycle-accurate model.
 | Metric | Simulation | FPGA (Arty A7 @ 50 MHz) |
 |--------|-----------|-------------------------|
 | Iterations | 100,000 | 100,000 |
-| Total cycles | 146,300,070 | 207,900,101 |
-| Cycles / iteration | 1,463 | 2,079 |
-| Dhrystones / sec / MHz | 683 | 481 |
-| DMIPS / MHz | **0.388** | **0.274** |
+| Total cycles | 141,600,085 | 207,900,101 |
+| Cycles / iteration | 1,416 | 2,079 |
+| Dhrystones / sec / MHz | 706 | 481 |
+| DMIPS / MHz | **0.401** | **0.274** |
 | Status | ✅ PASS | ✅ PASS |
 
 ### EMBench-IoT

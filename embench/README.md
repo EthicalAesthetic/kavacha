@@ -1,48 +1,91 @@
-# EMBench-IoT Benchmark Suite for Kavacha RISC-V Core
+# EMBench™-IoT Evaluation Suite for Kavacha
 
-This directory contains the runner scripts and documentation for running the **EMBench-IoT** benchmark suite on the Kavacha RV32IMC core, both in Verilator simulation and on physical FPGA hardware (Arty A7-100T).
-
----
-
-## 🚀 Quick Start
-
-### 1. Verilator Simulation Run
-To build and run all EMBench-IoT benchmarks in parallel on the Verilator simulation model:
-
-```bash
-./embench/run_embench.sh
-```
-
-### 2. Hardware-in-the-Loop (FPGA) Run
-To compile HIL firmware images and run the EMBench suite on the Digilent Arty A7-100T FPGA board via UART (115200 baud @ 50 MHz):
-
-```bash
-./embench/run_embench_fpga.sh
-```
+This document details the toolchain, compiler configuration, workload descriptions, execution parameters, and benchmark results for the **Kavacha** RISC-V (RV32IMC) processor core running the **EMBench™-IoT** benchmark suite.
 
 ---
 
-## 📊 Benchmark Results
+## Toolchain & Environment
 
-All benchmarks are compiled with:
+All EMBench-IoT workloads are compiled using the project's bundled GNU RISC-V toolchain with bare-metal freestanding optimization flags:
+
+| Setting | Value |
+|---------|-------|
+| **Primary Toolchain** | `xPack GNU RISC-V Embedded GCC 13.2.0` (`riscv-none-elf-gcc`) |
+| **Fallback Toolchain** | `riscv64-elf-gcc` / `riscv64-unknown-elf-gcc` (GCC 13+ / 15+) |
+| **Target Architecture** | `-march=rv32imc_zicsr` |
+| **Target ABI** | `-mabi=ilp32` |
+| **Optimization Level** | `-O2` |
+| **Simulation Engine** | `Verilator 5.018+` (cycle-accurate C++ RTL model) |
+| **Hardware Target** | Digilent Arty A7-100T (Xilinx Artix-7 `xc7a100tcsg324-1`) @ 50 MHz |
+
+### Compiler Flags
+
 ```bash
-riscv-none-elf-gcc -O2 -march=rv32imc_zicsr -mabi=ilp32 -ffreestanding -nostdlib
+-march=rv32imc_zicsr -mabi=ilp32 \
+-O2 \
+-ffreestanding \
+-ffunction-sections \
+-fdata-sections \
+-fno-builtin \
+-fno-common \
+-Wall \
+-nostdlib \
+-nostartfiles
 ```
 
-### Overall Summary
+### Linker Configuration
 
-| Metric | Simulation | FPGA HIL (Arty A7 @ 50 MHz) |
-| :--- | :--- | :--- |
-| **Benchmarks Executed** | 19 | 15 |
-| **Status** | ✅ PASS (100%) | ✅ PASS (100%) |
+```bash
+-T bench/common/bench.ld -Wl,--gc-sections
+```
+*(For FPGA Hardware-in-the-Loop execution, `sw/fpga_bench.ld` and `sw/crt0_fpga.S` are used).*
+
+---
+
+## Benchmark Workload Overview
+
+EMBench-IoT consists of real-world algorithms spanning signal processing, cryptography, compression, sorting, and control:
+
+| Benchmark | Category / Description | Workload Scale |
+|-----------|------------------------|:--------------:|
+| `aha-mont64` | 64-bit Montgomery multiplication for cryptography | 100 |
+| `crc32` | 32-bit standard cyclic redundancy check calculation | 100 |
+| `depthconv` | Depthwise 2D separable convolution layer (ML / DSP) | 100 |
+| `edn` | Finite impulse response (FIR) filter & vector mathematics | 100 |
+| `huffbench` | Huffman compression and decompression | 2 |
+| `matmult-int` | 32-bit integer matrix multiplication | 100 |
+| `md5sum` | MD5 message-digest cryptographic hashing | 100 |
+| `nettle-aes` | AES-128 cryptographic block cipher | 100 |
+| `nettle-sha256` | SHA-256 secure hash standard algorithm | 100 |
+| `nsichneu` | Petri net simulation and state-machine traversal | 10 |
+| `picojpeg` | Baseline sequential JPEG image decompression | 10 |
+| `qrduino` | QR code scanning and matrix decoding | 10 |
+| `sglib-combined` | Data structure containers (lists, red-black trees, arrays) | 100 |
+| `slre` | Super Light Regular Expression parser | 100 |
+| `statemate` | Statechart code generated for automotive controllers | 100 |
+| `tarfind` | POSIX tar archive parsing and lookup | 100 |
+| `ud` | Diagonal matrix decomposition | 100 |
+| `wikisort` | Fast in-place stable merge sort | 2 |
+| `xgboost` | Gradient boosted decision tree inference | 100 |
+
+---
+
+## Benchmark Results
+
+### Summary
+
+| Metric | Verilator Simulation | FPGA HIL (Arty A7 @ 50 MHz) |
+|--------|:-------------------:|:---------------------------:|
+| **Benchmarks Executed** | **19** | **15** |
+| **Pass Rate** | **19 / 19 (100%)** | **15 / 15 (100%)** |
 | **Geometric Mean (Cycles)** | **7,011,979** | **7,122,462** |
 
 ---
 
-### Detailed Benchmark Results Table
+### Detailed Cycle Counts per Workload
 
-| Benchmark | Scale | Simulation Cycles | FPGA HIL Cycles (Arty A7 @ 50 MHz) | Status |
-| :--- | :---: | :---: | :---: | :---: |
+| Benchmark | Scale Factor | Simulation Cycles | FPGA HIL Cycles (@ 50 MHz) | Status |
+|-----------|:------------:|:-----------------:|:--------------------------:|:------:|
 | `nsichneu` | 10 | 64,516 | 89,710 | ✅ PASS |
 | `ud` | 100 | 481,402 | 659,080 | ✅ PASS |
 | `huffbench` | 2 | 66,214,582 | 1,930,435 | ✅ PASS |
@@ -62,4 +105,22 @@ riscv-none-elf-gcc -O2 -march=rv32imc_zicsr -mabi=ilp32 -ffreestanding -nostdlib
 | `depthconv` | 100 | 652,229 | — | ✅ PASS (Sim) |
 | `md5sum` | 100 | 11,746,585 | — | ✅ PASS (Sim) |
 | `xgboost` | 100 | 992,662,851 | — | ✅ PASS (Sim) |
-| **Geomean** | — | **7,011,979** | **7,122,462** | ✅ PASS |
+| **Geometric Mean** | — | **7,011,979** | **7,122,462** | ✅ PASS |
+
+---
+
+## Geometric Mean Calculation Methodology
+
+The geometric mean across all passing workloads is computed as:
+
+$$\text{Geomean} = \exp\left( \frac{1}{N} \sum_{i=1}^{N} \ln(\text{Cycles}_i) \right)$$
+
+---
+
+## Available Runner Scripts
+
+- **`./run_embench.sh`**:
+  Compiles all 19 EMBench workloads with `-O2` using `riscv-none-elf-gcc` (GCC 13.2.0), executes them in parallel on the Verilator simulation model, checks pass assertions, and computes the geometric mean.
+
+- **`./run_embench_fpga.sh`**:
+  Builds bare-metal FPGA HIL firmware images (`sw/build_hil_bench.sh all`) and runs the automated UART test suite against the physical Arty A7-100T FPGA.
