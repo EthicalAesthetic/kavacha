@@ -2,7 +2,7 @@
 # ============================================================================
 # build.sh — build & run Kavacha under Icarus Verilog.
 #
-#   ./build.sh [sim|cosim|rvfi|debug|pmp|epmp|ecc|fpga|clean]
+#   ./build.sh [sim|cosim|rvfi|debug|pmp|epmp|ecc|fpga|bench|clean]
 #
 #   sim    (default) compile the core + SoC and run the self-checking smoke test
 #   cosim  run smoke, then co-simulate against the golden RV32IM ISA model
@@ -51,11 +51,27 @@ if [[ "$ACTION" == "pmp" || "$ACTION" == "epmp" ]]; then
   TC="${RISCV_TC:-../toolchains/riscv/xpack-riscv-none-elf-gcc-15.2.0-1/bin}"
   GCC="$TC/riscv-none-elf-gcc"
   OBJCOPY="$TC/riscv-none-elf-objcopy"
+  if [[ ! -x "$GCC" ]]; then
+    if command -v riscv64-unknown-elf-gcc &>/dev/null; then
+      GCC=$(command -v riscv64-unknown-elf-gcc)
+      OBJCOPY=$(command -v riscv64-unknown-elf-objcopy)
+    elif command -v riscv32-unknown-elf-gcc &>/dev/null; then
+      GCC=$(command -v riscv32-unknown-elf-gcc)
+      OBJCOPY=$(command -v riscv32-unknown-elf-objcopy)
+    elif command -v riscv-none-elf-gcc &>/dev/null; then
+      GCC=$(command -v riscv-none-elf-gcc)
+      OBJCOPY=$(command -v riscv-none-elf-objcopy)
+    fi
+  fi
   SRCASM=sw/pmp_test.S; [[ "$ACTION" == "epmp" ]] && SRCASM=sw/epmp_test.S
   if [[ -x "$GCC" ]]; then
-    echo "Assembling $SRCASM ..."
-    "$GCC" -march=rv32imc_zicsr -mabi=ilp32 -nostdlib -nostartfiles -ffreestanding \
-           -Wl,-Ttext=0 "$SRCASM" -o programs/build/pmp.elf
+    echo "Assembling $SRCASM using $GCC ..."
+    if ! "$GCC" -march=rv32imc_zicsr -mabi=ilp32 -nostdlib -nostartfiles -ffreestanding \
+           -Wl,-Ttext=0 "$SRCASM" -o programs/build/pmp.elf 2>/dev/null; then
+      echo "rv32imc_zicsr failed; retrying assembly with -march=rv32imc ..."
+      "$GCC" -march=rv32imc -mabi=ilp32 -nostdlib -nostartfiles -ffreestanding \
+             -Wl,-Ttext=0 "$SRCASM" -o programs/build/pmp.elf
+    fi
     "$OBJCOPY" -O binary -j .text programs/build/pmp.elf programs/build/pmp.bin
     python sw/bin2hex.py programs/build/pmp.bin programs/build/pmp.hex
   else
@@ -97,6 +113,21 @@ if [[ "$ACTION" == "debug" ]]; then
   "$IVL" -g2012 -I "$C" -I "$R" -o sim/tb_kavacha_debug \
     $CELLS $CORE tb/tb_kavacha_debug.sv
   "$VVP" sim/tb_kavacha_debug +IMEM=programs/build/smoke.hex
+fi
+
+# ---- Verilator benchmark suite (CoreMark + EMBench-IoT) -------------------
+if [[ "$ACTION" == "bench" ]]; then
+  echo "Running Kavacha benchmark suite (CoreMark + EMBench-IoT)..."
+  echo "  Verilator model + 20 benchmarks will be compiled and simulated."
+  echo "  Results will appear in bench/results/report.md"
+  echo ""
+  if [[ -n "${RISCV_TC:-}" ]]; then
+    export PATH="$RISCV_TC:$PATH"
+  fi
+  make -C "$(dirname "$0")/bench" all \
+    ${ITERATIONS:+ITERATIONS="$ITERATIONS"} \
+    ${SCALE:+SCALE="$SCALE"}
+  exit 0
 fi
 
 # ---- FPGA SoC sim (UART banner + LED blink) -------------------------------

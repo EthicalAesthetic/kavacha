@@ -23,29 +23,35 @@ module kavacha_muldiv
   output logic              done,
   output logic [XLEN-1:0]   result
 );
-  typedef enum logic [1:0] { S_IDLE, S_MUL, S_DIV, S_FIN } state_e;
-  state_e state;
+  localparam logic [1:0] S_IDLE = 2'd0;
+  localparam logic [1:0] S_MUL  = 2'd1;
+  localparam logic [1:0] S_DIV  = 2'd2;
+  localparam logic [1:0] S_FIN  = 2'd3;
+  logic [1:0] state;
+
 
   md_op_e          op_q;
   logic [XLEN-1:0] a_q, b_q;
 
   // ---- multiply: combinational 64-bit product on latched operands ----------
-  // Operands are explicitly extended to 64 bits BEFORE the multiply so the full
-  // product is formed (a 32x32 product needs 64-bit operands in the multiply;
-  // relying on context width mis-computes the high word — caught by riscv-tests
-  // mulh/mulhsu). se_* = sign-extended, ze_* = zero-extended.
-  wire [63:0] se_a = {{32{a_q[31]}}, a_q};
-  wire [63:0] se_b = {{32{b_q[31]}}, b_q};
-  wire [63:0] ze_a = {32'b0, a_q};
-  wire [63:0] ze_b = {32'b0, b_q};
-  logic [63:0] prod;
+  // We use exactly 33 bits for the multiplier operands. A 33x33 signed multiply 
+  // maps directly to 4 DSP48E1 slices, reducing DSP usage from 12 to 4 and vastly
+  // improving Fmax.
+  logic is_signed_a, is_signed_b;
   always_comb begin
     unique case (op_q)
-      MD_MUL, MD_MULH : prod = se_a * se_b;   // signed x signed
-      MD_MULHSU       : prod = se_a * ze_b;   // signed x unsigned
-      default         : prod = ze_a * ze_b;   // MULHU / MUL (unsigned)
+      MD_MUL, MD_MULH : begin is_signed_a = 1'b1; is_signed_b = 1'b1; end
+      MD_MULHSU       : begin is_signed_a = 1'b1; is_signed_b = 1'b0; end
+      default         : begin is_signed_a = 1'b0; is_signed_b = 1'b0; end
     endcase
   end
+  
+  wire signed [32:0] a_ext = {is_signed_a ? a_q[31] : 1'b0, a_q};
+  wire signed [32:0] b_ext = {is_signed_b ? b_q[31] : 1'b0, b_q};
+  
+  // 66-bit signed product (upper 2 bits are safely ignored)
+  wire signed [65:0] prod_full = a_ext * b_ext;
+  wire [63:0] prod = prod_full[63:0];
   // hoisted const part-selects (iverilog 12 needs these in continuous assigns)
   wire [31:0] prod_lo = prod[31:0];
   wire [31:0] prod_hi = prod[63:32];

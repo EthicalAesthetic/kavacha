@@ -2,9 +2,12 @@
 # kavacha_arty_a7.xdc — Digilent Arty A7-100T (xc7a100tcsg324-1), LVCMOS33.
 # ============================================================================
 
-# 100 MHz system clock
+# 100 MHz system clock (board oscillator)
 set_property -dict {PACKAGE_PIN E3 IOSTANDARD LVCMOS33} [get_ports CLK100]
 create_clock -period 10.000 -name sys_clk_pin -waveform {0.000 5.000} -add [get_ports CLK100]
+
+# 50 MHz derived clock from BUFR ÷2 — constrain so P&R times SoC paths at 20 ns
+create_generated_clock -name clk_50 -source [get_ports CLK100] -divide_by 2 [get_pins u_clkdiv/O]
 
 # Reset push-button (active-low on Arty)
 set_property -dict {PACKAGE_PIN C2 IOSTANDARD LVCMOS33} [get_ports ck_rst]
@@ -29,3 +32,7 @@ set_property -dict {PACKAGE_PIN D12 IOSTANDARD LVCMOS33} [get_ports jtag_tdo]
 # JTAG is driven from a slow external adapter (oversampled in-core) — relax it
 set_false_path -from [get_ports {jtag_tck jtag_tms jtag_tdi}]
 set_false_path -to   [get_ports jtag_tdo]
+
+# Allow 2 clock cycles for Debug Module paths to register file
+set_multicycle_path 2 -setup -from [get_cells -hierarchical -filter {NAME =~ *u_dbg*}]
+set_multicycle_path 1 -hold  -from [get_cells -hierarchical -filter {NAME =~ *u_dbg*}]

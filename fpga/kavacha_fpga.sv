@@ -26,7 +26,7 @@ module kavacha_fpga
 #(
   parameter int CLK_HZ     = 50_000_000,
   parameter int UART_BAUD  = 115_200,
-  parameter int MEM_WORDS  = 4096,          // 16 KB unified RAM (distributed)
+  parameter int MEM_WORDS  = 32768,         // 128 KB unified RAM (distributed)
   parameter     MEMFILE    = ""             // firmware .mem ($readmemh) for synthesis
 )(
   input  wire        clk,
@@ -46,8 +46,8 @@ module kavacha_fpga
 );
   localparam int AW = $clog2(MEM_WORDS);
 
-  // ---- unified program/data RAM (distributed, async read) ------------------
-  (* ram_style = "distributed" *) reg [31:0] mem [0:MEM_WORDS-1];
+  // ---- unified program/data RAM (synchronous read, Block RAM) --------------
+  (* ram_style = "block" *) reg [31:0] mem [0:MEM_WORDS-1];
   initial if (MEMFILE != "") $readmemh(MEMFILE, mem);
 
   // ---- core <-> bus --------------------------------------------------------
@@ -81,7 +81,7 @@ module kavacha_fpga
     .dmem_addr(dmem_addr), .dmem_re(dmem_re), .dmem_we(dmem_we),
     .dmem_be(dmem_be), .dmem_wdata(dmem_wdata), .dmem_rdata(dmem_rdata),
     .irq_timer(irq_timer), .irq_soft(irq_soft), .irq_ext(1'b0),
-    .mem_stall(1'b0),
+    .mem_stall(mem_stall), .mem_req(mem_req),
     .retire_valid(), .retire_pc(), .retire_instr(),
     .retire_rd_we(), .retire_rd(), .retire_rd_val(),
     .dbg_haltreq(dbg_haltreq), .dbg_resumereq(dbg_resumereq), .dbg_halted(dbg_halted),
@@ -102,8 +102,28 @@ module kavacha_fpga
     .dm_mem_rdata(dm_mem_rdata), .dm_mem_ready(dm_mem_ready)
   );
 
-  // ---- instruction fetch (async read) --------------------------------------
-  assign imem_rdata = mem[imem_addr[AW+1:2]];
+  // ---- 1-cycle memory stall logic ------------------------------------------
+  wire mem_req;
+  reg mem_stall_q;
+  always_ff @(posedge clk) begin
+    if (core_rst) mem_stall_q <= 1'b0;
+    else if (mem_req && !mem_stall_q) mem_stall_q <= 1'b1;
+    else mem_stall_q <= 1'b0;
+  end
+  wire mem_stall = (mem_req && !mem_stall_q);
+
+  // ---- instruction fetch (synchronous read) --------------------------------
+  reg [31:0] imem_rdata_q;
+  always_ff @(posedge clk) begin
+    imem_rdata_q <= mem[imem_addr[AW+1:2]];
+    if (1'b0) begin
+      mem[imem_addr[AW+1:2]][ 7: 0] <= 8'h0;
+      mem[imem_addr[AW+1:2]][15: 8] <= 8'h0;
+      mem[imem_addr[AW+1:2]][23:16] <= 8'h0;
+      mem[imem_addr[AW+1:2]][31:24] <= 8'h0;
+    end
+  end
+  assign imem_rdata = imem_rdata_q;
 
   // ---- data-bus decode -----------------------------------------------------
   wire in_ram    = (dmem_addr < MEM_WORDS*4);
@@ -130,11 +150,28 @@ module kavacha_fpga
         (dmem_addr[15:0]==16'hBFF8) ? mtime[31:0]       :
         (dmem_addr[15:0]==16'hBFFC) ? mtime[63:32]      : 32'h0;
 
-  // ---- data read mux -------------------------------------------------------
+  // ---- BRAM Port B (CPU Data + Debug Module) -------------------------------
+  wire [AW-1:0] portB_addr  = dm_mem_valid ? dm_mem_addr[AW+1:2] : didx;
+  wire          portB_we    = (dm_mem_valid && dm_mem_write && (dm_mem_addr < MEM_WORDS*4)) || (dmem_we && in_ram);
+  wire [3:0]    portB_be    = dm_mem_valid ? 4'b1111 : dmem_be;
+  wire [31:0]   portB_wdata = dm_mem_valid ? dm_mem_wdata : dmem_wdata;
+  
+  wire [3:0]    we          = {4{portB_we}} & portB_be;
+  
+  reg [31:0] portB_rdata_q;
+  always_ff @(posedge clk) begin
+    portB_rdata_q <= mem[portB_addr];
+    if (we[0]) mem[portB_addr][ 7: 0] <= portB_wdata[ 7: 0];
+    if (we[1]) mem[portB_addr][15: 8] <= portB_wdata[15: 8];
+    if (we[2]) mem[portB_addr][23:16] <= portB_wdata[23:16];
+    if (we[3]) mem[portB_addr][31:24] <= portB_wdata[31:24];
+  end
+
+  // ---- data read mux (synchronous RAM read) --------------------------------
   always_comb begin
     if      (uart_sel)  dmem_rdata = {24'h0, uart_rdata};
     else if (clint_sel) dmem_rdata = clint_rdata;
-    else if (in_ram)    dmem_rdata = mem[didx];
+    else if (in_ram)    dmem_rdata = portB_rdata_q;
     else                dmem_rdata = 32'h0;
   end
 
@@ -145,34 +182,26 @@ module kavacha_fpga
       mtime <= 64'd0; mtimecmp <= 64'hFFFF_FFFF_FFFF_FFFF; msip <= 1'b0; leds <= 8'h0;
     end else begin
       mtime <= mtime + 64'd1;
+
+      // CLINT / LED / tohost writes
       if (dmem_we) begin
-        if (in_ram) begin                       // byte-enabled RAM write
-          if (dmem_be[0]) mem[didx][7:0]   <= dmem_wdata[7:0];
-          if (dmem_be[1]) mem[didx][15:8]  <= dmem_wdata[15:8];
-          if (dmem_be[2]) mem[didx][23:16] <= dmem_wdata[23:16];
-          if (dmem_be[3]) mem[didx][31:24] <= dmem_wdata[31:24];
-        end else if (clint_sel) begin
-          if (dmem_addr[15:0]==16'h0000) msip           <= dmem_wdata[0];
-          if (dmem_addr[15:0]==16'h4000) mtimecmp[31:0] <= dmem_wdata;
-          if (dmem_addr[15:0]==16'h4004) mtimecmp[63:32]<= dmem_wdata;
-        end else if (led_sel)   leds <= dmem_wdata[7:0];
-        else if (tohost_sel) begin tohost <= dmem_wdata; tohost_we <= 1'b1; end
-      end
-      // Debug-Module System-Bus writes into RAM (hart halted -> no contention)
-      if (dm_mem_valid && dm_mem_write && (dm_mem_addr < MEM_WORDS*4)) begin
-        mem[dm_mem_addr[AW+1:2]] <= dm_mem_wdata;
+        if (!in_ram) begin
+          if (clint_sel) begin
+            if (dmem_addr[15:0]==16'h0000) msip           <= dmem_wdata[0];
+            if (dmem_addr[15:0]==16'h4000) mtimecmp[31:0] <= dmem_wdata;
+            if (dmem_addr[15:0]==16'h4004) mtimecmp[63:32]<= dmem_wdata;
+          end else if (led_sel)   leds <= dmem_wdata[7:0];
+          else if (tohost_sel) begin tohost <= dmem_wdata; tohost_we <= 1'b1; end
+        end
       end
     end
   end
 
   // ---- Debug-Module System-Bus read path (1-cycle) -------------------------
+  assign dm_mem_rdata = portB_rdata_q;
   always_ff @(posedge clk) begin
     dm_mem_ready <= 1'b0;
-    if (dm_mem_valid) begin
-      dm_mem_ready <= 1'b1;
-      if (!dm_mem_write && (dm_mem_addr < MEM_WORDS*4))
-        dm_mem_rdata <= mem[dm_mem_addr[AW+1:2]];
-    end
+    if (dm_mem_valid) dm_mem_ready <= 1'b1;
   end
 endmodule
 

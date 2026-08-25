@@ -11,7 +11,9 @@
 package kavacha_pkg;
 
   // ---- Word geometry -------------------------------------------------------
-  localparam int unsigned XLEN = 32;
+  localparam bit [31:0] XLEN = 32;
+
+
 
   // ---- Major opcodes (instr[6:0]) -----------------------------------------
   localparam logic [6:0] OP_LUI    = 7'b0110111;
@@ -70,6 +72,11 @@ package kavacha_pkg;
   localparam logic [11:0] CSR_MVENDORID= 12'hF11;
   localparam logic [11:0] CSR_MARCHID  = 12'hF12;
   localparam logic [11:0] CSR_MHARTID  = 12'hF14;
+  // Read-only user-mode aliases (0xC00/0xC80) — same as mcycle/mcycleh.
+  // Allows firmware compiled once to run on both Kavacha
+  localparam logic [11:0] CSR_CYCLE    = 12'hC00;
+  localparam logic [11:0] CSR_CYCLEH   = 12'hC80;
+  localparam logic [11:0] CSR_INSTRET  = 12'hC02;
 
 endpackage : kavacha_pkg
 
