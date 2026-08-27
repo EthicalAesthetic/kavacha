@@ -69,6 +69,7 @@ nav:
   - Bus Integration: bus-integration.md
   - FPGA Bring-up: fpga.md
   - Verification: verification.md
+  - Benchmarks & Utilization: benchmarks.md
   - Configuration Reference: configuration.md
 
 plugins:

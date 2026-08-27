@@ -1,5 +1,10 @@
 # Kavacha
 
+<p align="center">
+  <img src="kavacha.png" alt="Kavacha Logo" width="600"/>
+</p>
+
+
 **Kavacha** (*"armour"*) is a compact, area-optimized **RV32IMC** processor
 core. It executes one instruction at a time through a small multi-cycle finite
 state machine — no pipeline, no forwarding, and no hazard logic — which keeps
