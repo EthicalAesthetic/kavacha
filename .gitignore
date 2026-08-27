@@ -20,6 +20,19 @@ __pycache__/
 site/
 .cache/
 
+# Legacy flat documentation files (superseded by structured docs subdirectories)
+docs/architecture.md
+docs/benchmarks.md
+docs/bus-integration.md
+docs/csrs.md
+docs/debug.md
+docs/fpga.md
+docs/isa.md
+docs/memory-map.md
+docs/privilege-and-security.md
+docs/traps-and-interrupts.md
+docs/verification.md
+
 # editor / OS
 .vscode/
 .idea/
@@ -68,4 +81,3 @@ sw/firmware.mem
 # test benchmarks
 benchmarks/coremark_sim.log
 benchmarks/embench_sim.log
-

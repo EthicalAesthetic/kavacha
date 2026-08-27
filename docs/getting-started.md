@@ -10,7 +10,7 @@ co-simulating it against the golden ISA model.
 | [Icarus Verilog](https://steveicarus.github.io/iverilog/) 12+ | RTL simulation (`iverilog`, `vvp`) | Yes |
 | [Python](https://www.python.org/) 3.10+ | test-program builders, co-simulation | Yes |
 | RISC-V GCC (`riscv-none-elf-gcc`) | rebuild the assembly test programs | Optional |
-| [Vivado](https://www.amd.com/en/products/software/adaptive-socs-and-fpgas/vivado.html) | Arty A7 / ZCU102 FPGA flows | Optional |
+| [Vivado](https://www.amd.com/en/products/software/adaptive-socs-and-fpgas/vivado.html) | Arty A7 FPGA flows | Optional |
 
 The RISC-V toolchain is optional because prebuilt test programs are included in
 the repository — you can simulate everything without it.
