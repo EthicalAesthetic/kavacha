@@ -11,25 +11,27 @@ theme:
       primary: indigo
       accent: indigo
       toggle:
-        icon: material/weather-night
+        icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: indigo
       accent: indigo
       toggle:
-        icon: material/weather-sunny
+        icon: material/brightness-4
         name: Switch to light mode
   features:
     - navigation.instant
     - navigation.tracking
-    - navigation.sections
+    - navigation.path
     - navigation.top
     - navigation.footer
     - toc.follow
+    - content.code.annotate
     - content.code.copy
     - search.suggest
     - search.highlight
+    - search.share
   icon:
     repo: fontawesome/brands/github
 
@@ -62,12 +64,12 @@ nav:
       - Quick Start & Build Drivers: getting-started.md
       - Configuration Reference: configuration.md
 
-  - Core Architecture (Default Mode):
+  - Architecture:
       - Microarchitecture & Execution FSM: architecture/fsm.md
       - Datapath & Leaf Cells: architecture/datapath.md
       - Memory Interface & Alignment: architecture/memory-interface.md
 
-  - Instruction Set Architecture:
+  - Instruction Set (ISA):
       - RV32IMC Base & Compressed: isa/rv32imc.md
       - Zicsr Extension: isa/zicsr.md
       - Instruction Cycle Timing: isa/timing.md
@@ -78,7 +80,7 @@ nav:
       - 8-Region PMP & ePMP Rules: security/pmp-epmp.md
       - SECDED ECC Register File: security/ecc.md
 
-  - Control & Status Registers:
+  - Register File & CSRs:
       - Machine Mode CSRs: csrs/machine-csrs.md
       - Security & ePMP CSRs: csrs/security-csrs.md
 
@@ -86,12 +88,12 @@ nav:
       - Precise Exceptions & Traps: traps/exceptions.md
       - Machine Interrupts & CLINT: traps/interrupts.md
 
-  - Bus Integration & SoC:
+  - Bus & SoC Integration:
       - Native Synchronous Memory Port: integration/native-port.md
       - AXI4-Lite Master Wrapper: integration/axi4-lite.md
       - Reference SoC Top (kavacha_soc): integration/soc-top.md
 
-  - Hardware Debug (Spec 0.13.2):
+  - Debug Subsystem:
       - RISC-V External Debug & JTAG DTM: debug/jtag-dtm.md
       - Debug Module (DM) Registers & Control: debug/dm-registers.md
 

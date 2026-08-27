@@ -135,9 +135,9 @@ When interfacing with slower external memories or bus bridges:
 5. The core captures data on the next rising edge of `clk` and advances the FSM.
 
 ```
-CLK        :   _   / \   _   / \   _   / \   _   / \   
-dmem_addr  :  [      0x80001000       ]
-dmem_re    :  [      HIGH             ]
-mem_stall  :  ________[  STALL HIGH   ]________
-FSM State  :  [ LOAD ][ LOAD (Frozen) ][ FETCH ]
+CLK        :  _  / \  _  / \  _  / \  _  
+dmem_addr  : [   0x80001000   ]
+dmem_re    : [   HIGH         ]
+mem_stall  : _____[ STALL HIGH ]_____
+FSM State  : [ LOAD ][ FROZEN  ][ FETCH ]
 ```

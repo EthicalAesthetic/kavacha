@@ -109,27 +109,27 @@ end
 ### AXI4-Lite Read Handshake
 
 ```
-CLK         :   _   / \   _   / \   _   / \   _   / \   _   / \   
-dmem_re     :  [        HIGH              ]______________________
-m_axil_arvalid: [       HIGH              ]______________________
-m_axil_arready: __________________[  HIGH  ]______________________
-m_axil_rvalid : __________________________[  HIGH  ]______________
-m_axil_rready : __________________________[  HIGH  ]______________
-mem_stall   :  ________[  STALL HIGH      ]________[ LOW ]_______
+CLK      :  _  / \  _  / \  _  / \  _  / \  
+dmem_re  : [      HIGH       ]_____________
+ARVALID  : [      HIGH       ]_____________
+ARREADY  : ___________[ HIGH ]_____________
+RVALID   : ___________________[ HIGH ]_____
+RREADY   : ___________________[ HIGH ]_____
+mem_stall: _____[ STALL HIGH ]_____[ LOW ]_
 ```
 
 ### AXI4-Lite Write Handshake
 
 ```
-CLK         :   _   / \   _   / \   _   / \   _   / \   _   / \   
-dmem_we     :  [        HIGH              ]______________________
-m_axil_awvalid: [       HIGH              ]______________________
-m_axil_wvalid : [       HIGH              ]______________________
-m_axil_awready: __________________[  HIGH  ]______________________
-m_axil_wready : __________________[  HIGH  ]______________________
-m_axil_bvalid : __________________________[  HIGH  ]______________
-m_axil_bready : __________________________[  HIGH  ]______________
-mem_stall   :  ________[  STALL HIGH      ]________[ LOW ]_______
+CLK      :  _  / \  _  / \  _  / \  _  / \  
+dmem_we  : [      HIGH       ]_____________
+AWVALID  : [      HIGH       ]_____________
+WVALID   : [      HIGH       ]_____________
+AWREADY  : ___________[ HIGH ]_____________
+WREADY   : ___________[ HIGH ]_____________
+BVALID   : ___________________[ HIGH ]_____
+BREADY   : ___________________[ HIGH ]_____
+mem_stall: _____[ STALL HIGH ]_____[ LOW ]_
 ```
 
 ---

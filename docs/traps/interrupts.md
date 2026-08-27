@@ -91,11 +91,11 @@ $$\text{VectorAddress}_{\text{Interrupt}} = \{\text{mtvec.BASE}[31:2], 2'b00\} +
 ## 5. Interrupt Response Latency & Servicing
 
 ```
-CLK              :   _   / \   _   / \   _   / \   _   / \   
-Interrupt Line   :  ____[  MEIP HIGH  ]_____________________
-FSM State        :  [ STATE_EXEC ][ STATE_FETCH (mtvec Target) ]
-pc               :  [   0x0004   ][       0x00000100           ]
-mepc             :  _____________[   Saved 0x0008              ]
+CLK        :  _  / \  _  / \  _  / \  _  
+Int Line   : ____[ MEIP HIGH ]___________
+FSM State  : [  EXEC  ][ FETCH (mtvec) ]
+pc         : [ 0x0004 ][   0x00000100   ]
+mepc       : __________[ Saved 0x0008   ]
 ```
 
 1. **Sampling:** Interrupt lines are sampled continuously. If an interrupt asserts during `STATE_EXEC`, the FSM completes the current instruction.

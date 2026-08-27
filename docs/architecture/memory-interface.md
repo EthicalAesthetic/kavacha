@@ -128,13 +128,13 @@ This multi-beat handling is completely transparent to software — no trap handl
 When Kavacha connects to an AXI4-Lite bus fabric via `kavacha_axil_master.sv`:
 
 ```
-CLK        :   _   / \   _   / \   _   / \   _   / \   _   / \   
-dmem_re    :  [        HIGH              ]______________________
-AXI ARVALID:  [        HIGH              ]______________________
-AXI ARREADY:  __________________[  HIGH  ]______________________
-AXI RVALID :  __________________________[  HIGH  ]______________
-mem_stall  :  ________[  STALL HIGH      ]________[ LOW ]_______
-FSM State  :  [ LOAD ][ LOAD (Frozen)    ][ LOAD ][ FETCH      ]
+CLK        :  _  / \  _  / \  _  / \  _  / \  _  
+dmem_re    : [      HIGH       ]_________________
+ARVALID    : [      HIGH       ]_________________
+ARREADY    : ___________[ HIGH ]_________________
+RVALID     : ___________________[ HIGH ]_________
+mem_stall  : _____[ STALL HIGH ]_____[ LOW ]_____
+FSM State  : [ LOAD ][ FROZEN  ][ LOAD ][ FETCH ]
 ```
 
 1. Core issues `dmem_re = 1` during `STATE_LOAD`.

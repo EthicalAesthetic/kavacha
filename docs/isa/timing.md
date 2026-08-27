@@ -28,11 +28,11 @@ All cycle counts below assume a zero-wait-state memory system (`mem_stall = 0`).
 ### Hardware Divide (`DIV` / `DIVU`) — 34 Cycles Total
 
 ```
-CLK       :  _  / \  _  / \  _  / \ ... / \  _  / \  _  / \  
-FSM State : [ FETCH ][ EXEC ][    STATE_MD (32 cycles)   ][ FETCH ]
-cnt_q     : ---------[ 31  ][ 30  ] ... [ 0   ]-----------
-md_ready  : ________________________________[ HIGH        ]________
-Retire    : ________________________________[ VALID HIGH   ]________
+CLK       :  _  / \  _  / \  _  / \ ... / \  _  / \  
+FSM State : [ FETCH ][ EXEC ][  MD (32 cycles)  ][ FETCH ]
+cnt_q     : ---------[ 31  ][ 30  ] ... [ 0   ]-----
+md_ready  : ____________________________[ HIGH  ]___
+Retire    : ____________________________[ VALID ]___
 ```
 
 ---

@@ -112,24 +112,24 @@ stateDiagram-v2
 ### 1. Single-Cycle Execution (ALU / Branch / Store / CSR) — 2 Cycles Total
 
 ```
-CLK        :   _   / \   _   / \   _   / \   _   / \   
-FSM State  : [  STATE_FETCH  ][  STATE_EXEC   ][  STATE_FETCH  ]
-imem_addr  : [   0x00000000  ][   0x00000000  ][   0x00000004  ]
-imem_rdata : [  ADD x1,x2,x3 ][  ADD x1,x2,x3 ][  SUB x4,x5,x6 ]
-rf_we      : _________________[   HIGH (x1)   ]_________________
-Retire (RVFI): _________________[   VALID HIGH  ]_________________
+CLK        :  _  / \  _  / \  _  / \  _  / \  
+FSM State  : [  FETCH  ][   EXEC   ][  FETCH  ]
+imem_addr  : [ 0x0000  ][ 0x0000   ][ 0x0004  ]
+imem_rdata : [ ADD x1  ][ ADD x1   ][ SUB x4  ]
+rf_we      : ___________[ HIGH(x1) ]___________
+Retire RVFI: ___________[  VALID   ]___________
 ```
 
 ### 2. Memory Load Execution (3 Cycles Total)
 
 ```
-CLK        :   _   / \   _   / \   _   / \   _   / \   _   
-FSM State  : [  STATE_FETCH  ][  STATE_EXEC   ][  STATE_LOAD   ][  STATE_FETCH  ]
-imem_addr  : [   0x00000004  ][   0x00000004  ][   0x00000004  ][   0x00000008  ]
-dmem_addr  : _________________[   0x80001000  ][   0x80001000  ]_________________
-dmem_re    : _________________[   HIGH        ][   HIGH        ]_________________
-rf_we      : __________________________________[   HIGH (rd)   ]_________________
-Retire (RVFI): __________________________________[   VALID HIGH  ]_________________
+CLK        :  _  / \  _  / \  _  / \  _  / \  _  
+FSM State  : [  FETCH  ][   EXEC   ][   LOAD   ][  FETCH  ]
+imem_addr  : [ 0x0004  ][ 0x0004   ][ 0x0004   ][ 0x0008  ]
+dmem_addr  : ___________[ 0x80001000][ 0x80001000]___________
+dmem_re    : ___________[   HIGH   ][   HIGH   ]___________
+rf_we      : _______________________[ HIGH(rd) ]___________
+Retire RVFI: _______________________[  VALID   ]___________
 ```
 
 ---
