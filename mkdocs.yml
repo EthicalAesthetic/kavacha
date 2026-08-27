@@ -3,6 +3,19 @@ site_description: A compact, area-optimized RV32IMC processor core
 site_author: Kavacha Contributors
 copyright: Copyright &copy; 2026 Kavacha Contributors
 
+exclude_docs: |
+  architecture.md
+  benchmarks.md
+  bus-integration.md
+  csrs.md
+  debug.md
+  fpga.md
+  isa.md
+  memory-map.md
+  privilege-and-security.md
+  traps-and-interrupts.md
+  verification.md
+
 theme:
   name: material
   palette:

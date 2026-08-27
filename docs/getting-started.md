@@ -76,7 +76,7 @@ The `rvfi`, `debug`, and `ecc` actions each print a `PASS` line on success.
 
 ## Next steps
 
-- Read the **[Architecture](architecture.md)** to understand the execution
+- Read the **[Architecture](architecture/fsm.md)** to understand the execution
   model.
-- Browse the **[Instruction Set](isa.md)** and **[Memory Map](memory-map.md)**.
-- See **[Verification](verification.md)** for how correctness is established.
+- Browse the **[Instruction Set](isa/rv32imc.md)** and **[SoC Integration](integration/soc-top.md)**.
+- See **[Verification](verification/cocotb-verilator.md)** for how correctness is established.
