@@ -8,18 +8,19 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VIVADO_SETTINGS="/home/yash/Vivado/Vivado/2023.2/settings64.sh"
+VIVADO_SETTINGS="${VIVADO_SETTINGS:-/vivado/Vivado/2023.2/settings64.sh}"
 
 if [ -f "$VIVADO_SETTINGS" ]; then
     echo "[INFO] Sourcing Vivado 2023.2 environment..."
     source "$VIVADO_SETTINGS"
+elif command -v vivado &>/dev/null; then
+    echo "[INFO] Vivado found on PATH."
 else
-    echo "[ERROR] Vivado settings file not found at $VIVADO_SETTINGS"
-    exit 1
+    echo "[WARNING] Vivado settings file not found at $VIVADO_SETTINGS, relying on system PATH."
 fi
 
-TCL_SCRIPT="$SCRIPT_DIR/fpga/arty_a7/synth_utilization.tcl"
-BUILD_BASE="$SCRIPT_DIR/fpga/arty_a7/build_util"
+TCL_SCRIPT="$SCRIPT_DIR/arty_a7/synth_utilization.tcl"
+BUILD_BASE="$SCRIPT_DIR/arty_a7/build_util"
 
 mkdir -p "$BUILD_BASE"
 
