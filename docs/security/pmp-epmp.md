@@ -78,29 +78,35 @@ mseccfg CSR Layout (0x747):
 ## 5. SystemVerilog Priority Checker (`kavacha_pmp.sv`)
 
 ```verilog
-// 8-Region Parallel Address & Permission Checker
+// 8-Region Parallel Address & Permission Checker (kavacha_pmp.sv)
 always_comb begin
-  access_fault = 1'b0;
-  match_found  = 1'b0;
-  
-  for (int i = 7; i >= 0; i--) begin
-    if (region_match[i]) begin
-      match_found = 1'b1;
-      // Enforce L bit, privilege level, and requested access type (R/W/X)
-      if (priv_mode == 2'b00 || pmp_cfg[i].L) begin
-        if ((req_type == PMP_READ  && !pmp_cfg[i].R) ||
-            (req_type == PMP_WRITE && !pmp_cfg[i].W) ||
-            (req_type == PMP_EXEC  && !pmp_cfg[i].X)) begin
-          access_fault = 1'b1;
-        end
-      end
-    end
+  logic [7:0]  c;  logic [1:0] A;  logic L, X, W, R, perm;
+  logic [31:0] pa, pa_prev, m, aw;
+  aw = {2'b00, addr[31:2]};                 // address in 4-byte units
+
+  for (i = 0; i < NPMP; i = i + 1) begin
+    c  = cfg[i*8 +: 8];
+    A  = c[4:3]; L = c[7]; X = c[2]; W = c[1]; R = c[0];
+    pa      = addrreg[i*32 +: 32];
+    pa_prev = (i == 0) ? 32'd0 : addrreg[(i-1)*32 +: 32];
+    m       = pa ^ (pa + 32'd1);            // NAPOT size mask (low run of 1s)
+    unique case (A)
+      2'd0: match[i] = 1'b0;                              // OFF
+      2'd1: match[i] = (aw >= pa_prev) && (aw < pa);      // TOR
+      2'd2: match[i] = (aw == pa);                        // NA4
+      2'd3: match[i] = ((aw & ~m) == (pa & ~m));          // NAPOT
+    endcase
+    perm     = (do_x & X) | (do_r & R) | (do_w & W);
+    allow[i] = (priv_m && !L) ? 1'b1 : perm;              // M bypasses unless locked
   end
-  
-  // Default deny for User mode if no region matches
-  if (!match_found && priv_mode == 2'b00) begin
-    access_fault = 1'b1;
-  end
+
+  // lowest matching region wins (reverse scan so index 0 overwrites)
+  matched = 1'b0; sel_allow = 1'b0;
+  for (i = NPMP-1; i >= 0; i = i - 1)
+    if (match[i]) begin matched = 1'b1; sel_allow = allow[i]; end
+
+  // no match: U-mode always denied; M-mode denied under MMWP whitelist
+  fault = matched ? ~sel_allow : (~priv_m | mmwp);
 end
 ```
 

@@ -83,42 +83,42 @@ end
 
 ## 3. M Extension (Hardware Multiply & Divide)
 
-The M-extension unit (`kavacha_muldiv.sv`) provides 32-bit hardware integer multiplication, division, and remainder operations using an iterative shift-and-add multiplier and non-restoring divider.
+The M-extension unit (`kavacha_muldiv.sv`) provides 32-bit hardware integer multiplication, division, and remainder operations.
+
+* **Multiply:** Uses a combinational 33×33-bit signed product (`a_ext * b_ext`). The result is available in a single clock cycle after latching operands.
+* **Division:** Iterative shift-subtract algorithm over 32 steps (`bit_idx` counts 31→0) plus a sign-fixup cycle (`S_FIN`).
 
 ```verilog
-// Non-Restoring Divider State Engine (kavacha_muldiv.sv)
-always_ff @(posedge clk or negedge rst_n) begin
-  if (!rst_n) begin
-    cnt_q <= '0;
-    state_q <= IDLE;
-  end else case (state_q)
-    IDLE: if (start_i) begin
-      cnt_q <= 5'd31;
-      rem_q <= '0;
-      quo_q <= operand_a_abs;
-      state_q <= DIVIDE;
-    end
-    DIVIDE: begin
-      rem_q <= next_rem;
-      quo_q <= {quo_q[30:0], ~next_rem[32]};
-      cnt_q <= cnt_q - 1'b1;
-      if (cnt_q == 0) state_q <= DONE;
-    end
-    DONE: state_q <= IDLE;
-  endcase
+// Multiply: combinational 33x33 signed product (kavacha_muldiv.sv)
+wire signed [32:0] a_ext = {is_signed_a ? a_q[31] : 1'b0, a_q};
+wire signed [32:0] b_ext = {is_signed_b ? b_q[31] : 1'b0, b_q};
+wire signed [65:0] prod_full = a_ext * b_ext;
+wire [63:0] prod = prod_full[63:0];
+
+// Division: iterative shift-subtract (kavacha_muldiv.sv)
+S_DIV: begin
+  if (rem_shifted >= {1'b0, divisor_mag}) begin
+    rem_q      <= rem_shifted - {1'b0, divisor_mag};
+    quotient_q <= (quotient_q << 1) | 32'd1;
+  end else begin
+    rem_q      <= rem_shifted;
+    quotient_q <= (quotient_q << 1);
+  end
+  if (bit_idx == 5'd0) state <= S_FIN;
+  else                 bit_idx <= bit_idx - 1'b1;
 end
 ```
 
-| Instruction | Funct3 | Operation | Mathematical Formula | Execution Cycles |
-|-------------|:------:|-----------|----------------------|:----------------:|
-| `MUL rd, rs1, rs2` | `000` | Multiply Low 32-bit | `R[rd] = (R[rs1] * R[rs2])[31:0]` | 3 - 34 |
-| `MULH rd, rs1, rs2` | `001` | Multiply High Signed | `R[rd] = (signed(R[rs1]) * signed(R[rs2]))[63:32]` | 3 - 34 |
-| `MULHSU rd, rs1, rs2`| `002` | Multiply High Signed/Unsigned | `R[rd] = (signed(R[rs1]) * unsigned(R[rs2]))[63:32]` | 3 - 34 |
-| `MULHU rd, rs1, rs2` | `003` | Multiply High Unsigned | `R[rd] = (unsigned(R[rs1]) * unsigned(R[rs2]))[63:32]` | 3 - 34 |
-| `DIV rd, rs1, rs2` | `100` | Divide Signed | `R[rd] = signed(R[rs1]) / signed(R[rs2])` | 34 |
-| `DIVU rd, rs1, rs2` | `101` | Divide Unsigned | `R[rd] = unsigned(R[rs1]) / unsigned(R[rs2])` | 34 |
-| `REM rd, rs1, rs2` | `110` | Remainder Signed | `R[rd] = signed(R[rs1]) % signed(R[rs2])` | 34 |
-| `REMU rd, rs1, rs2` | `111` | Remainder Unsigned | `R[rd] = unsigned(R[rs1]) % unsigned(R[rs2])` | 34 |
+| Instruction | Funct3 | Operation | Formula | Execution Cycles |
+|-------------|:------:|-----------|---------|:----------------:|
+| `MUL rd, rs1, rs2` | `000` | Multiply Low 32-bit | `R[rd] = (R[rs1] × R[rs2])[31:0]` | **3** |
+| `MULH rd, rs1, rs2` | `001` | Multiply High Signed | `R[rd] = (signed(R[rs1]) × signed(R[rs2]))[63:32]` | **3** |
+| `MULHSU rd, rs1, rs2`| `010` | Multiply High Signed×Unsigned | `R[rd] = (signed(R[rs1]) × unsigned(R[rs2]))[63:32]` | **3** |
+| `MULHU rd, rs1, rs2` | `011` | Multiply High Unsigned | `R[rd] = (unsigned(R[rs1]) × unsigned(R[rs2]))[63:32]` | **3** |
+| `DIV rd, rs1, rs2` | `100` | Divide Signed | `R[rd] = signed(R[rs1]) / signed(R[rs2])` | **36** |
+| `DIVU rd, rs1, rs2` | `101` | Divide Unsigned | `R[rd] = unsigned(R[rs1]) / unsigned(R[rs2])` | **36** |
+| `REM rd, rs1, rs2` | `110` | Remainder Signed | `R[rd] = signed(R[rs1]) % signed(R[rs2])` | **36** |
+| `REMU rd, rs1, rs2` | `111` | Remainder Unsigned | `R[rd] = unsigned(R[rs1]) % unsigned(R[rs2])` | **36** |
 
 ### Standard Division Corner Cases
 

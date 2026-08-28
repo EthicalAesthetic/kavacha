@@ -63,14 +63,20 @@ To return from a trap handler, the Machine supervisor executes `MRET`. The core 
 
 ```verilog
 // MRET Hardware State Restoration Logic (kavacha_csr.sv)
-always_ff @(posedge clk or negedge rst_n) begin
-  if (!rst_n) begin
-    priv_mode <= 2'b11;
-  end else if (mret_act) begin
-    priv_mode    <= mstatus.mpp; // Restore previous privilege level
-    mstatus.mie  <= mstatus.mpie;// Restore global interrupt enable
-    mstatus.mpie <= 1'b1;        // Re-enable previous interrupt flag
-    mstatus.mpp  <= 2'b00;       // Reset MPP to User mode
+always_ff @(posedge clk) begin
+  if (rst) begin
+    priv <= 2'b11;  // Start in M-mode
+  end else if (mret) begin
+    mstatus[MIE_BIT]  <= mstatus[MPIE_BIT]; // Restore global interrupt enable
+    mstatus[MPIE_BIT] <= 1'b1;               // Re-enable previous interrupt flag
+    if (U_MODE) begin
+      priv           <= mstatus[12:11];       // Restore interrupted privilege
+      mstatus[12:11] <= 2'b00;                // Reset MPP to U (least privilege)
+      if (mstatus[12:11] != 2'b11)
+        mstatus[17]  <= 1'b0;                 // MRET to <M clears MPRV
+    end else begin
+      mstatus[12:11] <= 2'b11;                // M-only: MPP stays M
+    end
   end
 end
 ```

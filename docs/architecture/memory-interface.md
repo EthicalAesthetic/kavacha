@@ -68,23 +68,28 @@ Kavacha is **little-endian**. Sub-word stores (`SB`, `SH`) compute the 4-bit byt
 | **`SH` (Halfword)** | `2'b10` | Bytes 2, 3 | `4'b1100` | `{rs2_data[15:0], 16'b0}` |
 | **`SW` (Word)** | `2'b00` | Bytes 0..3 | `4'b1111` | `rs2_data[31:0]` |
 
-### Boolean Logic Equations for `dmem_be[3:0]`
+### Shift-Based Byte Enable Logic (`kavacha_core.sv`)
+
+The actual RTL computes byte enables using a unified shift approach based on `d_mem_width` (0=byte, 1=half, 2=word) and the address offset `aoff = alu_y[1:0]`:
 
 ```verilog
-// Byte enable mask calculation in kavacha_core.sv
-always_comb begin
-  case (funct3)
-    3'b000, 3'b100: begin // SB / LB / LBU (Byte Access)
-      dmem_be = 4'b0001 << dmem_addr[1:0];
-    end
-    3'b001, 3'b101: begin // SH / LH / LHU (Halfword Access)
-      dmem_be = 4'b0011 << {dmem_addr[1], 1'b0};
-    end
-    default: begin        // SW / LW (Word Access)
-      dmem_be = 4'b1111;
-    end
-  endcase
-end
+// Unified byte enable: base mask shifted by address offset (kavacha_core.sv)
+wire [1:0] aoff = alu_y[1:0];
+wire [7:0] be8  = (((d_mem_width==2'd0) ? 8'h01 :
+                    (d_mem_width==2'd1) ? 8'h03 : 8'h0F)) << aoff;
+
+// For aligned stores: lower 4 bits; for misaligned 2nd beat: upper 4 bits
+assign dmem_be = (state==S_STORE2) ? be8[7:4] :
+                 (is_store_ex)     ? be8[3:0] : 4'b0000;
+```
+
+Store data is similarly shifted into the correct byte lanes:
+
+```verilog
+wire [31:0] st_val = (d_mem_width==2'd0) ? {24'b0, rdata2[7:0]} :
+                     (d_mem_width==2'd1) ? {16'b0, rdata2[15:0]} : rdata2;
+wire [63:0] st_sh  = {32'b0, st_val} << {aoff, 3'b000};  // << aoff*8
+assign dmem_wdata  = (state==S_STORE2) ? st_sh[63:32] : st_sh[31:0];
 ```
 
 ---
@@ -115,9 +120,9 @@ Result Word   : { B6, B5, B4, B3 }
 ```
 
 ### Execution Steps for Misaligned Accesses
-1. **Beat 1 (Lower Word):** FSM drives `dmem_addr = addr & ~3'b011`, reads/writes lower bytes, and saves partial data in an internal holding register (`misalign_hold_reg`).
-2. **Beat 2 (Upper Word):** FSM increments `dmem_addr = (addr & ~3'b011) + 4`, reads/writes upper bytes.
-3. **Reassembly:** Datapath shifts and merges bytes from Beat 1 and Beat 2 into a single 32-bit value before register writeback.
+1. **Beat 1 (Lower Word):** FSM drives `dmem_addr = {alu_y[31:2], 2'b00}`, reads/writes lower bytes, and saves the first word into an internal holding register (`ld_w0`).
+2. **Beat 2 (Upper Word):** FSM drives `dmem_addr = {alu_y[31:2], 2'b00} + 4`, reads/writes upper bytes.
+3. **Reassembly:** The two words are combined as `{dmem_rdata, ld_w0}` and shifted right by `aoff*8` bits, then width-extracted to produce the final load value.
 
 This multi-beat handling is completely transparent to software — no trap handler overhead or `mtval` exception processing is required.
 

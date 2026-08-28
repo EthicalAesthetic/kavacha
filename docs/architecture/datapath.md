@@ -38,10 +38,10 @@ Expands 16-bit compressed RISC-V instructions (`C` extension) into standard 32-b
 
 ```verilog
 module kavacha_rvc (
-  input  logic [16:0] instr_i,   // 16-bit compressed instruction + alignment
-  output logic [31:0] instr_o,   // Expanded 32-bit RISC-V instruction
-  output logic        is_rvc_o,  // Asserted if input is a valid 16-bit RVC instruction
-  output logic        illegal_o  // Asserted if 16-bit opcode is invalid
+  input  logic [15:0] instr16,       // 16-bit compressed instruction halfword
+  output logic [31:0] instr32,       // Expanded 32-bit RISC-V instruction
+  output logic        is_compressed, // 1 if input is a valid 16-bit RVC instruction
+  output logic        decomp_illegal // 1 if 16-bit opcode is invalid / reserved
 );
 ```
 
@@ -76,65 +76,96 @@ module kavacha_rvc (
 
 ### 2. Instruction Decoder (`kavacha_decode.sv`)
 
-Extracts register addresses, immediates, and functional control flags from 32-bit instructions.
+Combinational decoder that extracts control signals from the (RVC-expanded) 32-bit instruction. This is the single source of truth for instruction decoding.
 
 ```verilog
-module kavacha_decode (
-  input  logic [31:0] instr_i,        // 32-bit instruction word
-  output logic [4:0]  rs1_o,          // Source register 1 address
-  output logic [4:0]  rs2_o,          // Source register 2 address
-  output logic [4:0]  rd_o,           // Destination register address
-  output alu_op_e     alu_op_o,       // ALU operation enum
-  output branch_op_e  branch_op_o,    // Branch condition operation enum
-  output imm_type_e   imm_type_o,     // Immediate field format
-  output logic        rf_we_o,        // GPR write enable flag
-  output logic        dmem_re_o,      // Memory read strobe
-  output logic        dmem_we_o,      // Memory write strobe
-  output logic        is_illegal_o    // Asserted if instruction is invalid
+module kavacha_decode
+  import kavacha_pkg::*;
+(
+  input  logic [31:0]     instr,     // 32-bit instruction (already RVC-expanded)
+  input  logic [XLEN-1:0] imm_i,     // I-type immediate (from kavacha_immgen)
+  input  logic [XLEN-1:0] imm_s,     // S-type immediate
+  input  logic [XLEN-1:0] imm_b,     // B-type immediate
+  input  logic [XLEN-1:0] imm_u,     // U-type immediate
+  input  logic [XLEN-1:0] imm_j,     // J-type immediate
+
+  output alu_op_e         alu_op,    // ALU operation selector
+  output br_op_e          br_op,     // Branch comparison selector
+  output md_op_e          md_op,     // Multiply/divide operation
+  output wb_sel_e         wb_sel,    // Writeback source (ALU/MEM/PC4/CSR/MD)
+  output logic            use_pc,    // 1 = ALU operand A is PC (AUIPC)
+  output logic            use_imm,   // 1 = ALU operand B is immediate
+  output logic            reg_we,    // GPR write enable
+  output logic            mem_re,    // Memory read strobe
+  output logic            mem_we,    // Memory write strobe
+  output logic            mem_unsigned, // 1 = zero-extend load (LBU/LHU)
+  output logic [1:0]      mem_width, // 0=byte, 1=half, 2=word
+  output logic            is_branch, is_jal, is_jalr, is_md, is_csr,
+  output logic            is_ecall, is_ebreak, is_mret,
+  output logic            illegal,   // Unrecognized instruction
+  output logic            uses_rs2,  // 1 = rs2 field is architecturally used
+  output logic [XLEN-1:0] id_imm     // Selected immediate for this instruction
 );
 ```
+
+Note: `rs1`, `rs2`, and `rd` fields are extracted as wires directly in `kavacha_core.sv` from `instr[19:15]`, `instr[24:20]`, and `instr[11:7]` respectively — they are NOT decoder outputs.
 
 ---
 
 ### 3. Immediate Generator (`kavacha_immgen.sv`)
 
-Extracts and sign-extends immediate bitfields across all standard RISC-V formats.
+Produces all five standard RISC-V immediate formats simultaneously. The decoder selects the correct one via `id_imm`.
 
 ```verilog
 module kavacha_immgen (
-  input  logic [31:0] instr_i,      // 32-bit instruction word
-  input  imm_type_e   imm_type_i,   // Format: IMM_I, IMM_S, IMM_B, IMM_U, IMM_J
-  output logic [31:0] imm_o         // Sign-extended 32-bit immediate output
+  input  logic [31:0]     instr,  // 32-bit instruction word
+  output logic [XLEN-1:0] imm_i,  // I-type: {{20{instr[31]}}, instr[31:20]}
+  output logic [XLEN-1:0] imm_s,  // S-type: {{20{instr[31]}}, instr[31:25], instr[11:7]}
+  output logic [XLEN-1:0] imm_b,  // B-type: sign-extended branch offset
+  output logic [XLEN-1:0] imm_u,  // U-type: {instr[31:12], 12'b0}
+  output logic [XLEN-1:0] imm_j   // J-type: sign-extended jump offset
 );
 ```
 
 #### Bitfield Extraction Logic
-- **I-Type (`ADDI`, `LW`, `JALR`):** `imm_o = {{20{instr[31]}}, instr[31:20]}`
-- **S-Type (`SW`, `SB`, `SH`):** `imm_o = {{20{instr[31]}}, instr[31:25], instr[11:7]}`
-- **B-Type (`BEQ`, `BNE`, `BLT`):** `imm_o = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0}`
-- **U-Type (`LUI`, `AUIPC`):** `imm_o = {instr[31:12], 12'b0}`
-- **J-Type (`JAL`):** `imm_o = {{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0}`
+- **I-Type (`ADDI`, `LW`, `JALR`):** `imm_i = {{20{instr[31]}}, instr[31:20]}`
+- **S-Type (`SW`, `SB`, `SH`):** `imm_s = {{20{instr[31]}}, instr[31:25], instr[11:7]}`
+- **B-Type (`BEQ`, `BNE`, `BLT`):** `imm_b = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0}`
+- **U-Type (`LUI`, `AUIPC`):** `imm_u = {instr[31:12], 12'b0}`
+- **J-Type (`JAL`):** `imm_j = {{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0}`
 
 ---
 
 ### 4. Arithmetic Logic Unit (`kavacha_alu.sv`)
 
-Executes 32-bit single-cycle arithmetic, logical operations, and barrel shifts.
+Combinational 32-bit ALU supporting all RV32I arithmetic, logical, and shift operations.
 
 ```verilog
-module kavacha_alu (
-  input  alu_op_e     operator_i,  // ALU_ADD, ALU_SUB, ALU_AND, ALU_OR, ALU_XOR, ALU_SLL, ALU_SRL, ALU_SRA, ALU_SLT, ALU_SLTU
-  input  logic [31:0] operand_a_i, // Operand A (rs1_data or PC)
-  input  logic [31:0] operand_b_i, // Operand B (rs2_data or immediate)
-  output logic [31:0] result_o,    // 32-bit ALU output
-  output logic        zero_o       // High if result_o == 0
+module kavacha_alu
+  import kavacha_pkg::*;
+(
+  input  alu_op_e          op,  // Operation selector enum
+  input  logic [XLEN-1:0]  a,   // Operand A (rdata1 or PC)
+  input  logic [XLEN-1:0]  b,   // Operand B (rdata2 or immediate)
+  output logic [XLEN-1:0]  y    // 32-bit result
 );
 ```
 
-#### Barrel Shifter Implementation
-* **Logical Left Shift (`SLL`):** `result_o = operand_a_i << operand_b_i[4:0]`
-* **Logical Right Shift (`SRL`):** `result_o = operand_a_i >> operand_b_i[4:0]`
-* **Arithmetic Right Shift (`SRA`):** `result_o = $signed(operand_a_i) >>> operand_b_i[4:0]` (preserves sign bit 31).
+#### ALU Operation Map
+
+| `alu_op_e` Value | Operation | SystemVerilog Logic |
+|---|---|---|
+| `ALU_ADD` | Addition | `y = a + b` |
+| `ALU_SUB` | Subtraction | `y = a - b` |
+| `ALU_SLL` | Logical Left Shift | `y = a << b[4:0]` |
+| `ALU_SLT` | Set Less Than (Signed) | `y = ($signed(a) < $signed(b)) ? 1 : 0` |
+| `ALU_SLTU` | Set Less Than (Unsigned) | `y = (a < b) ? 1 : 0` |
+| `ALU_XOR` | Bitwise XOR | `y = a ^ b` |
+| `ALU_SRL` | Logical Right Shift | `y = a >> b[4:0]` |
+| `ALU_SRA` | Arithmetic Right Shift | `y = $signed(a) >>> b[4:0]` |
+| `ALU_OR` | Bitwise OR | `y = a \| b` |
+| `ALU_AND` | Bitwise AND | `y = a & b` |
+| `ALU_PASS_B` | Pass Operand B (LUI) | `y = b` |
 
 ---
 
@@ -143,21 +174,70 @@ module kavacha_alu (
 32 × 32-bit register file storing architectural registers `x0` through `x31`.
 
 ```verilog
-module kavacha_regfile #(
-  parameter bit SECURE = 0
-) (
-  input  logic        clk,
-  input  logic        rst_n,
-  input  logic        we_i,          // Write enable
-  input  logic [4:0]  waddr_i,       // Destination register address (rd)
-  input  logic [31:0] wdata_i,       // Writeback data
-  input  logic [4:0]  raddr1_i,      // Source register 1 address (rs1)
-  output logic [31:0] rdata1_o,      // Read data 1
-  input  logic [4:0]  raddr2_i,      // Source register 2 address (rs2)
-  output logic [31:0] rdata2_o       // Read data 2
+module kavacha_regfile
+  import kavacha_pkg::*;
+#(
+  // WRITE_FIRST=1 enables write-before-read transparency (for pipelined cores).
+  // Kavacha sets this to 0: multi-cycle cores must not form
+  // a read->write->ALU->read combinational loop.
+  parameter bit WRITE_FIRST = 1
+)(
+  input  logic              clk,
+  input  logic [4:0]        ra1,   // Read address port 1 (rs1)
+  input  logic [4:0]        ra2,   // Read address port 2 (rs2)
+  output logic [XLEN-1:0]   rd1,   // Read data port 1
+  output logic [XLEN-1:0]   rd2,   // Read data port 2
+  input  logic              we,    // Write enable
+  input  logic [4:0]        wa,    // Write address (rd)
+  input  logic [XLEN-1:0]   wd     // Write data
 );
 ```
 
-#### Synthesis & Hardware Optimization
-* **Zero Register Hardwiring:** Register `x0` is hardwired to `32'h00000000`. Writes to `waddr_i == 5'b00000` are automatically ignored (`we_i & (waddr_i != 0)`).
-* **Non-Transparent Semantics:** A read and write to the same register in the same clock cycle returns the **old value**. Because Kavacha only has 1 instruction in flight, write-bypass multiplexers are unnecessary, allowing Vivado synthesis to infer compact LUT-RAM primitives (`RAM32M` on Xilinx Artix-7).
+#### Implementation Details
+* **Zero Register Hardwiring:** Register `x0` is hardwired to `32'h00000000`. Writes to `wa == 5'd0` are ignored (`we && (wa != 5'd0)`).
+* **`WRITE_FIRST` Parameter:** `kavacha_core` instantiates with `WRITE_FIRST(0)`. A read and write to the same register in the same clock cycle returns the **old value**, avoiding combinational loops in the multi-cycle datapath.
+* **Two async read ports, one sync write port.** Initial register values are zero.
+
+---
+
+### 6. Branch Comparator (`kavacha_branch.sv`)
+
+Evaluates branch condition codes for conditional branch instructions.
+
+```verilog
+module kavacha_branch
+  import kavacha_pkg::*;
+(
+  input  br_op_e           br_op,  // Branch operation enum
+  input  logic [XLEN-1:0]  a,      // rs1 data
+  input  logic [XLEN-1:0]  b,      // rs2 data
+  output logic              taken   // 1 = branch condition met
+);
+```
+
+Supported operations: `BR_EQ`, `BR_NE`, `BR_LT`, `BR_GE`, `BR_LTU`, `BR_GEU`, `BR_NONE`.
+
+---
+
+### 7. Multiply / Divide Unit (`kavacha_muldiv.sv`)
+
+Multi-cycle hardware unit for RV32M operations.
+
+```verilog
+module kavacha_muldiv
+  import kavacha_pkg::*;
+(
+  input  logic              clk,
+  input  logic              rst,
+  input  logic              start,   // Pulse for 1 cycle to begin
+  input  md_op_e            op,      // MD_MUL..MD_REMU
+  input  logic [XLEN-1:0]  a,       // Operand A (rs1)
+  input  logic [XLEN-1:0]  b,       // Operand B (rs2)
+  output logic              busy,    // 1 while computing
+  output logic              done,    // 1-cycle pulse when result is valid
+  output logic [XLEN-1:0]  result   // Computation result
+);
+```
+
+* **Multiply:** Combinational 33×33-bit signed product. Completes in **1 clock cycle** (S_MUL → done).
+* **Division:** Iterative shift-subtract over 32 steps (`bit_idx` 31→0) + sign-fixup cycle (`S_FIN`). Takes **34 muldiv clocks**.
