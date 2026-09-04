@@ -10,7 +10,7 @@ co-simulating it against the golden ISA model.
 | [Icarus Verilog](https://steveicarus.github.io/iverilog/) 12+ | RTL simulation (`iverilog`, `vvp`) | Yes |
 | [Python](https://www.python.org/) 3.10+ | test-program builders, co-simulation | Yes |
 | RISC-V GCC (`riscv-none-elf-gcc`) | rebuild the assembly test programs | Optional |
-| [Vivado](https://www.amd.com/en/products/software/adaptive-socs-and-fpgas/vivado.html) | Arty A7 / ZCU102 FPGA flows | Optional |
+| [Vivado](https://www.amd.com/en/products/software/adaptive-socs-and-fpgas/vivado.html) | Arty A7 FPGA flows | Optional |
 
 The RISC-V toolchain is optional because prebuilt test programs are included in
 the repository — you can simulate everything without it.
@@ -37,6 +37,7 @@ Kavacha ships two equivalent build drivers: `build.sh` for Linux/macOS and
     ./build.sh pmp      # SECURE config: User mode + PMP test program
     ./build.sh epmp     # SECURE config: ePMP (mseccfg) rules
     ./build.sh ecc      # register-file SECDED ECC unit test
+    ./build.sh axil     # AXI4-Lite adapter self-check
     ./build.sh fpga     # FPGA SoC sim (UART banner + LED blink)
     ./build.sh clean
     ```
@@ -48,7 +49,11 @@ Kavacha ships two equivalent build drivers: `build.sh` for Linux/macOS and
     .\build.ps1 cosim    # + golden co-simulation
     .\build.ps1 rvfi
     .\build.ps1 debug
+    .\build.ps1 pmp
+    .\build.ps1 epmp
     .\build.ps1 ecc
+    .\build.ps1 axil
+    .\build.ps1 fpga
     .\build.ps1 clean
     ```
 

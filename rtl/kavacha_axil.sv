@@ -64,7 +64,10 @@ module kavacha_axil_master
   always_ff @(posedge clk) begin
     if (rst) st <= AX_IDLE;
     else unique case (st)
-      AX_IDLE: if (mem_req) st <= dmem_we ? AX_AW : AX_AR;
+      AX_IDLE: if (mem_req) begin
+                 if (dmem_we) st <= AX_AW;
+                 else         st <= AX_AR;
+               end
       AX_AR:   if (arready) st <= AX_R;
       AX_R:    if (rvalid)  st <= AX_IDLE;
       AX_AW:   if (awready && wready) st <= AX_B;

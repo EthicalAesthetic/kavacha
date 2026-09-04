@@ -3,7 +3,11 @@
 #   .\build.ps1 cosim      # build + smoke + golden co-simulation
 #   .\build.ps1 rvfi       # RVFI (riscv-formal interface) self-check
 #   .\build.ps1 debug      # JTAG / Debug-Module self-check
+#   .\build.ps1 pmp        # SECURE config: U-mode + PMP test
+#   .\build.ps1 epmp       # SECURE config: ePMP rules test
 #   .\build.ps1 ecc        # register-file SECDED ECC unit test
+#   .\build.ps1 axil       # AXI4-Lite master/slave interconnect self-check
+#   .\build.ps1 fpga       # FPGA SoC simulation (UART banner + LED blink)
 #   .\build.ps1 clean
 param([string]$Action = "sim")
 $ErrorActionPreference = "Stop"
@@ -33,6 +37,24 @@ if ($Action -eq "ecc") {
     & $IVL -g2012 -I $C -o sim\tb_regfile_ecc "$C\kavacha_pkg.sv" "$C\kavacha_regfile_ecc.sv" tb\tb_regfile_ecc.sv
     if ($LASTEXITCODE -ne 0) { throw "iverilog failed" }
     & $VVP sim\tb_regfile_ecc; return
+}
+
+if ($Action -eq "pmp" -or $Action -eq "epmp") {
+    $hexName = if ($Action -eq "epmp") { "epmp" } else { "pmp" }
+    Write-Host "Building Kavacha SECURE sim (U-mode + PMP + ePMP + regfile ECC)..."
+    & $IVL -g2012 -DKAVACHA_SECURE -I $C -I $R -o sim\tb_kavacha @cells "$C\kavacha_regfile_ecc.sv" @core tb\tb_kavacha.sv
+    if ($LASTEXITCODE -ne 0) { throw "iverilog failed" }
+    Write-Host "Running $Action test on Kavacha..."
+    & $VVP sim\tb_kavacha "+IMEM=programs\build\$hexName.hex"; return
+}
+
+if ($Action -eq "axil") {
+    python programs\build_smoke.py
+    if ($LASTEXITCODE -ne 0) { throw "build_smoke.py failed" }
+    Write-Host "Building AXI4-Lite bus integration self-check..."
+    & $IVL -g2012 -I $C -I $R -o sim\tb_kavacha_axil @cells "$R\kavacha_core.sv" "$R\kavacha_debug.sv" "$R\kavacha_axil.sv" tb\tb_kavacha_axil.sv
+    if ($LASTEXITCODE -ne 0) { throw "iverilog failed" }
+    & $VVP sim\tb_kavacha_axil +IMEM=programs\build\smoke.hex; return
 }
 
 python programs\build_smoke.py

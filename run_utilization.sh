@@ -8,13 +8,23 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VIVADO_SETTINGS="/home/yash/Vivado/Vivado/2023.2/settings64.sh"
 
-if [ -f "$VIVADO_SETTINGS" ]; then
-    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+if command -v vivado &>/dev/null; then
+    echo "[INFO] Using vivado from PATH: $(command -v vivado)"
+elif [ -n "${VIVADO_SETTINGS:-}" ] && [ -f "$VIVADO_SETTINGS" ]; then
+    echo "[INFO] Sourcing Vivado from VIVADO_SETTINGS: $VIVADO_SETTINGS"
     source "$VIVADO_SETTINGS"
+elif [ -f "/home/yash/Vivado/Vivado/2023.2/settings64.sh" ]; then
+    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+    source "/home/yash/Vivado/Vivado/2023.2/settings64.sh"
+elif [ -f "/tools/Xilinx/Vivado/2023.2/settings64.sh" ]; then
+    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+    source "/tools/Xilinx/Vivado/2023.2/settings64.sh"
+elif [ -f "/opt/Xilinx/Vivado/2023.2/settings64.sh" ]; then
+    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+    source "/opt/Xilinx/Vivado/2023.2/settings64.sh"
 else
-    echo "[ERROR] Vivado settings file not found at $VIVADO_SETTINGS"
+    echo "[ERROR] Vivado not found in PATH or standard installation directories."
     exit 1
 fi
 

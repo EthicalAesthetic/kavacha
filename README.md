@@ -195,7 +195,7 @@ make verilator-kavacha
 # 2. Run CoreMark
 make run-kavacha-coremark ITERATIONS=1000
 
-# 3. Run all 20 EMBench-IoT benchmarks
+# 3. Run all 19 EMBench-IoT benchmarks
 make run-kavacha-embench
 
 # 4. Run Dhrystone (from its own directory)
@@ -273,6 +273,7 @@ Expected output:
 ./build.sh pmp      # SECURE config: User mode + PMP test program
 ./build.sh epmp     # SECURE config: ePMP (mseccfg) rules test
 ./build.sh ecc      # Register-file SECDED ECC unit test
+./build.sh axil     # AXI4-Lite adapter self-check
 ./build.sh fpga     # FPGA SoC simulation (UART banner + LED activity)
 ./build.sh clean    # Clean build artifacts
 ```
@@ -286,6 +287,7 @@ Expected output:
 | PMP test | `pmp` | User-mode isolation and PMP enforcement |
 | ePMP test | `epmp` | Enhanced PMP (mseccfg) rules |
 | ECC unit test | `ecc` | The register file corrects/detects bit errors |
+| AXI4-Lite test | `axil` | Native memory bus to AXI4-Lite protocol conversion |
 | FPGA SoC test | `fpga` | Full SoC simulation with synthesizable UART and Debug Module |
 
 ### Windows (PowerShell)
@@ -295,7 +297,10 @@ Expected output:
 .\build.ps1 cosim    # + golden co-simulation
 .\build.ps1 rvfi
 .\build.ps1 debug
+.\build.ps1 pmp
+.\build.ps1 epmp
 .\build.ps1 ecc
+.\build.ps1 axil
 .\build.ps1 fpga
 .\build.ps1 clean
 ```

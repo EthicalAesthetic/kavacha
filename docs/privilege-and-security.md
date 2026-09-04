@@ -42,11 +42,10 @@ The region configuration and address state live in the `pmpcfg`/`pmpaddr` CSRs.
 
 The `mseccfg` CSR enables **ePMP** behaviour, which tightens the default rules:
 
-- **Machine Mode Lockdown (`MML`)** changes how permission bits are interpreted,
-  enabling shared code/data regions and stricter machine-mode enforcement.
 - **Machine Mode Whitelist Policy (`MMWP`)** makes any access not matching a PMP
-  region fault, rather than defaulting to allow for Machine mode.
-- **Rule Locking Bypass (`RLB`)** controls whether locked rules can be modified.
+  region fault, rather than defaulting to allow for Machine mode (enforced in hardware).
+- **Rule Locking Bypass (`RLB`)** controls whether locked rules can be modified while locked.
+- *Note on MML:* `mseccfg.MML` (Machine Mode Lockdown) bit is provided in the CSR register interface; full MML re-encoded permission semantics in the hardware address checker are reserved for future hardware revision.
 
 Together, ePMP lets a Machine-mode supervisor build a strict memory-isolation
 policy that even Machine mode cannot silently escape.

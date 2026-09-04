@@ -1,8 +1,7 @@
 // ============================================================================
 // kavacha_immgen.sv — RISC-V immediate generator (shared leaf cell).
 // Extracts the five immediate formats from a 32-bit instruction. Purely
-// combinational; reused by every AstraV core so the sign-extension logic lives
-// in exactly one place.
+// combinational; sign-extension logic lives in exactly one place.
 // ============================================================================
 `include "kavacha_pkg.sv"
 

@@ -2,7 +2,7 @@
 
 Kavacha ships a self-contained, board-independent FPGA SoC (`fpga/kavacha_fpga.sv`)
 for real-hardware bring-up, along with constraint templates for the Digilent
-Arty A7 and the Xilinx ZCU102.
+Arty A7.
 
 ## FPGA SoC
 
@@ -57,15 +57,6 @@ directly from the board's 100 MHz oscillator.
 
 The provided `.xdc` constraints and `.tcl` build script drive a Vivado
 project; supply `firmware.mem` to the project as described in the header.
-
-## Xilinx ZCU102
-
-`fpga/zcu102/` targets the ZCU102 (`xczu9eg-ffvb1156-2-e`) PL. It is a
-**template**: the ZCU102 PL has no fixed single-ended oscillator and its
-USB-UART is wired to the PS, so you must finalise the clock source (a Clocking
-Wizard output or `pl_clk0`) and route the UART to a PMOD for a PL-only console.
-Verify all pins against your board revision and the board master XDC before
-building.
 
 !!! note
     The FPGA tops are starting points. Always confirm device part, pin

@@ -59,6 +59,35 @@ single- and double-bit errors and checks correction and detection:
 ./build.sh ecc      # -> ECC: PASS
 ```
 
+## PMP and ePMP verification
+
+The `pmp` and `epmp` targets compile and simulate dedicated assembly suites
+testing User-mode privilege transitions, PMP access enforcement, and ePMP
+`mseccfg` locking/whitelist rules:
+
+```bash
+./build.sh pmp      # -> [TB] PASS (cycle 132)
+./build.sh epmp     # -> [TB] PASS (cycle 78)
+```
+
+## AXI4-Lite bridge verification
+
+The `axil` target exercises `kavacha_axil.sv`, verifying read/write transactions,
+burst translation, and response channel handshaking:
+
+```bash
+./build.sh axil     # -> [TB] PASS (AXI4-Lite)
+```
+
+## FPGA SoC simulation
+
+The `fpga` target verifies the full synthesizable board SoC with integrated UART,
+CLINT, unified RAM, and user LEDs:
+
+```bash
+./build.sh fpga     # -> FPGA: PASS
+```
+
 ## Summary
 
 | Method | Target | What it proves |
@@ -67,4 +96,8 @@ single- and double-bit errors and checks correction and detection:
 | Golden co-simulation | `cosim` | RTL matches the ISA model retire-for-retire |
 | RVFI self-check | `rvfi` | instruction-level trace conforms to the formal interface |
 | Debug self-check | `debug` | the Debug Module halts, inspects, and steps correctly |
+| PMP test | `pmp` | User-mode isolation and PMP enforcement |
+| ePMP test | `epmp` | Enhanced PMP (mseccfg) rules |
 | ECC unit test | `ecc` | the register file corrects/detects bit errors |
+| AXI4-Lite test | `axil` | native memory bus to AXI4-Lite conversion |
+| FPGA SoC test | `fpga` | full SoC simulation with UART and Debug Module |
