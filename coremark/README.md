@@ -100,6 +100,8 @@ The `coremark/` directory provides shell drivers for running and reproducing Cor
 
 ### Simulation
 
-![alt text](coremark_sim-1.png)
+![CoreMark Simulation Output](coremark_sim.png)
 
 ### FPGA HIL
+
+![CoreMark FPGA HIL Output](cm_fpga.png)

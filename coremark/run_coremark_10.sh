@@ -12,10 +12,14 @@ export PATH="$VERIF_TOOLS_DIR/gcc/bin:$VERIF_TOOLS_DIR/verilator/bin:$PATH"
 # Detect RISC-V GCC (same fallback chain as dhrystone/run_dhrystone.sh)
 if command -v riscv-none-elf-gcc &>/dev/null; then
     RISCV_GCC="riscv-none-elf-gcc"
+elif [[ -x "/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc" ]]; then
+    RISCV_GCC="/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc"
 elif command -v riscv64-elf-gcc &>/dev/null; then
     RISCV_GCC="riscv64-elf-gcc"
 elif command -v riscv64-unknown-elf-gcc &>/dev/null; then
     RISCV_GCC="riscv64-unknown-elf-gcc"
+elif command -v riscv32-unknown-elf-gcc &>/dev/null; then
+    RISCV_GCC="riscv32-unknown-elf-gcc"
 else
     echo "ERROR: No RISC-V GCC found. Install riscv-none-elf-gcc or riscv64-elf-gcc."
     exit 1

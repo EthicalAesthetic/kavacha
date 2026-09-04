@@ -38,7 +38,10 @@ BENCH_CMD="${1:-all}"
 # ---------------------------------------------------------------------------
 # Toolchain detection (same logic as bench/Makefile)
 # ---------------------------------------------------------------------------
-if command -v riscv-none-elf-gcc &>/dev/null; then
+if [[ -x "/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc" ]]; then
+    GCC="/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc"
+    OBJCOPY="/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-objcopy"
+elif command -v riscv-none-elf-gcc &>/dev/null; then
     GCC="riscv-none-elf-gcc"
     OBJCOPY="riscv-none-elf-objcopy"
 elif command -v riscv64-elf-gcc &>/dev/null; then

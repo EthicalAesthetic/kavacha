@@ -55,6 +55,9 @@ _start:
     /* ---- _exit: write return value to tohost ------------------------------ */
     .globl  _exit
 _exit:
+    bnez    a0, 1f
+    li      a0, 1               /* exit(0) -> tohost = 1 (PASS) */
+1:
     li      t0, 0x20000000      /* TOHOST_ADDR */
     sw      a0, 0(t0)
 .Lspin:

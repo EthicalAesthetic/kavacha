@@ -2,7 +2,7 @@
 # ============================================================================
 # build.sh — build & run Kavacha under Icarus Verilog.
 #
-#   ./build.sh [sim|cosim|rvfi|debug|pmp|epmp|ecc|fpga|bench|clean]
+#   ./build.sh [sim|cosim|rvfi|debug|pmp|epmp|ecc|axil|fpga|bench|clean]
 #
 #   sim    (default) compile the core + SoC and run the self-checking smoke test
 #   cosim  run smoke, then co-simulate against the golden RV32IM ISA model
@@ -11,6 +11,7 @@
 #   pmp    build the SECURE config (U-mode + PMP) and run the PMP test program
 #   epmp   as pmp, exercising the ePMP (mseccfg) rules
 #   ecc    build the register-file SECDED ECC unit test
+#   axil   build the AXI4-Lite master/slave interconnect self-check
 #   fpga   build the FPGA SoC sim (UART banner + LED blink) from firmware.mem
 #   clean  remove build artifacts
 # ============================================================================
@@ -48,40 +49,49 @@ fi
 
 # ---- SECURE config: U-mode + PMP / ePMP -----------------------------------
 if [[ "$ACTION" == "pmp" || "$ACTION" == "epmp" ]]; then
-  TC="${RISCV_TC:-../toolchains/riscv/xpack-riscv-none-elf-gcc-15.2.0-1/bin}"
-  GCC="$TC/riscv-none-elf-gcc"
-  OBJCOPY="$TC/riscv-none-elf-objcopy"
-  if [[ ! -x "$GCC" ]]; then
-    if command -v riscv64-unknown-elf-gcc &>/dev/null; then
-      GCC=$(command -v riscv64-unknown-elf-gcc)
-      OBJCOPY=$(command -v riscv64-unknown-elf-objcopy)
-    elif command -v riscv32-unknown-elf-gcc &>/dev/null; then
-      GCC=$(command -v riscv32-unknown-elf-gcc)
-      OBJCOPY=$(command -v riscv32-unknown-elf-objcopy)
-    elif command -v riscv-none-elf-gcc &>/dev/null; then
-      GCC=$(command -v riscv-none-elf-gcc)
-      OBJCOPY=$(command -v riscv-none-elf-objcopy)
-    fi
+  TC="${RISCV_TC:-/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin}"
+  GCC=""
+  OBJCOPY=""
+  if [[ -x "$TC/riscv-none-elf-gcc" ]]; then
+    GCC="$TC/riscv-none-elf-gcc"
+    OBJCOPY="$TC/riscv-none-elf-objcopy"
+  elif command -v riscv64-elf-gcc &>/dev/null; then
+    GCC=$(command -v riscv64-elf-gcc)
+    OBJCOPY=$(command -v riscv64-elf-objcopy)
+  elif command -v riscv-none-elf-gcc &>/dev/null; then
+    GCC=$(command -v riscv-none-elf-gcc)
+    OBJCOPY=$(command -v riscv-none-elf-objcopy)
+  elif command -v riscv64-unknown-elf-gcc &>/dev/null; then
+    GCC=$(command -v riscv64-unknown-elf-gcc)
+    OBJCOPY=$(command -v riscv64-unknown-elf-objcopy)
+  elif command -v riscv32-unknown-elf-gcc &>/dev/null; then
+    GCC=$(command -v riscv32-unknown-elf-gcc)
+    OBJCOPY=$(command -v riscv32-unknown-elf-objcopy)
   fi
-  SRCASM=sw/pmp_test.S; [[ "$ACTION" == "epmp" ]] && SRCASM=sw/epmp_test.S
-  if [[ -x "$GCC" ]]; then
+
+  SRCASM=sw/pmp_test.S; HEXNAME=pmp
+  if [[ "$ACTION" == "epmp" ]]; then
+    SRCASM=sw/epmp_test.S; HEXNAME=epmp
+  fi
+
+  if [[ -n "$GCC" && -x "$GCC" ]]; then
     echo "Assembling $SRCASM using $GCC ..."
     if ! "$GCC" -march=rv32imc_zicsr -mabi=ilp32 -nostdlib -nostartfiles -ffreestanding \
-           -Wl,-Ttext=0 "$SRCASM" -o programs/build/pmp.elf 2>/dev/null; then
+           -Wl,-Ttext=0 "$SRCASM" -o "programs/build/${HEXNAME}.elf" 2>/dev/null; then
       echo "rv32imc_zicsr failed; retrying assembly with -march=rv32imc ..."
       "$GCC" -march=rv32imc -mabi=ilp32 -nostdlib -nostartfiles -ffreestanding \
-             -Wl,-Ttext=0 "$SRCASM" -o programs/build/pmp.elf
+             -Wl,-Ttext=0 "$SRCASM" -o "programs/build/${HEXNAME}.elf"
     fi
-    "$OBJCOPY" -O binary -j .text programs/build/pmp.elf programs/build/pmp.bin
-    python sw/bin2hex.py programs/build/pmp.bin programs/build/pmp.hex
+    "$OBJCOPY" -O binary -j .text "programs/build/${HEXNAME}.elf" "programs/build/${HEXNAME}.bin"
+    python3 sw/bin2hex.py "programs/build/${HEXNAME}.bin" "programs/build/${HEXNAME}.hex"
   else
-    echo "No RISC-V toolchain found; using the prebuilt programs/build/pmp.hex."
+    echo "No RISC-V toolchain found; using prebuilt programs/build/${HEXNAME}.hex."
   fi
   echo "Building Kavacha SECURE sim (U-mode + PMP + ePMP + regfile ECC)..."
   "$IVL" -g2012 -DKAVACHA_SECURE -I "$C" -I "$R" -o sim/tb_kavacha \
     $CELLS "$C/kavacha_regfile_ecc.sv" $CORE tb/tb_kavacha.sv
   echo "Running $ACTION test on Kavacha..."
-  "$VVP" sim/tb_kavacha +IMEM=programs/build/pmp.hex
+  "$VVP" sim/tb_kavacha +IMEM="programs/build/${HEXNAME}.hex"
   exit 0
 fi
 
@@ -127,6 +137,16 @@ if [[ "$ACTION" == "bench" ]]; then
   make -C "$(dirname "$0")/bench" all \
     ${ITERATIONS:+ITERATIONS="$ITERATIONS"} \
     ${SCALE:+SCALE="$SCALE"}
+  exit 0
+fi
+
+# ---- AXI4-Lite bus integration self-check --------------------------------
+if [[ "$ACTION" == "axil" ]]; then
+  echo "Building AXI4-Lite bus integration self-check..."
+  python3 programs/build_smoke.py
+  "$IVL" -g2012 -I "$C" -I "$R" -o sim/tb_kavacha_axil \
+    $CELLS "$R/kavacha_core.sv" "$R/kavacha_debug.sv" "$R/kavacha_axil.sv" tb/tb_kavacha_axil.sv
+  "$VVP" sim/tb_kavacha_axil +IMEM=programs/build/smoke.hex
   exit 0
 fi
 

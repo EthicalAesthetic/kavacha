@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Self-contained RV32IM golden ISA simulator for the AstraV family.
+"""Self-contained RV32IM golden ISA simulator for Kavacha.
 
 Functional, per-instruction reference. Loads the same $readmemh image the RTL
 testbench runs and emits a retire trace in the exact format tb_kavacha.sv

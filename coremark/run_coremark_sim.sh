@@ -9,6 +9,23 @@ VERIF_TOOLS_DIR="$KAVACHA_DIR/verification/tools"
 # Add tools to PATH
 export PATH="$VERIF_TOOLS_DIR/gcc/bin:$VERIF_TOOLS_DIR/verilator/bin:$PATH"
 
+# Detect RISC-V GCC
+if command -v riscv-none-elf-gcc &>/dev/null; then
+    RISCV_GCC="riscv-none-elf-gcc"
+elif [[ -x "/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc" ]]; then
+    RISCV_GCC="/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc"
+elif command -v riscv64-elf-gcc &>/dev/null; then
+    RISCV_GCC="riscv64-elf-gcc"
+elif command -v riscv64-unknown-elf-gcc &>/dev/null; then
+    RISCV_GCC="riscv64-unknown-elf-gcc"
+elif command -v riscv32-unknown-elf-gcc &>/dev/null; then
+    RISCV_GCC="riscv32-unknown-elf-gcc"
+else
+    echo "ERROR: No RISC-V GCC found."
+    exit 1
+fi
+echo "[BUILD] Toolchain: $RISCV_GCC"
+
 # Move to bench directory
 cd "$KAVACHA_DIR/bench"
 
@@ -21,7 +38,7 @@ echo "========================================="
 rm -f build/coremark.hex build/coremark.elf
 
 # Build CoreMark (reduced iterations for fast sim)
-make coremark ITERATIONS=1000 RISCV_GCC=riscv-none-elf-gcc
+make coremark ITERATIONS=1000 RISCV_GCC="$RISCV_GCC"
 
 # Run simulation
 make run-kavacha-coremark TIMEOUT_CYCLES=5000000000

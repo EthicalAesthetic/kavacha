@@ -8,15 +8,26 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VIVADO_SETTINGS="${VIVADO_SETTINGS:-/vivado/Vivado/2023.2/settings64.sh}"
 
-if [ -f "$VIVADO_SETTINGS" ]; then
-    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+if command -v vivado &>/dev/null; then
+    echo "[INFO] Using vivado from PATH: $(command -v vivado)"
+elif [ -n "${VIVADO_SETTINGS:-}" ] && [ -f "$VIVADO_SETTINGS" ]; then
+    echo "[INFO] Sourcing Vivado from VIVADO_SETTINGS: $VIVADO_SETTINGS"
     source "$VIVADO_SETTINGS"
-elif command -v vivado &>/dev/null; then
-    echo "[INFO] Vivado found on PATH."
+elif [ -f "/home/yash/Vivado/Vivado/2023.2/settings64.sh" ]; then
+    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+    source "/home/yash/Vivado/Vivado/2023.2/settings64.sh"
+elif [ -f "/vivado/Vivado/2023.2/settings64.sh" ]; then
+    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+    source "/vivado/Vivado/2023.2/settings64.sh"
+elif [ -f "/tools/Xilinx/Vivado/2023.2/settings64.sh" ]; then
+    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+    source "/tools/Xilinx/Vivado/2023.2/settings64.sh"
+elif [ -f "/opt/Xilinx/Vivado/2023.2/settings64.sh" ]; then
+    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+    source "/opt/Xilinx/Vivado/2023.2/settings64.sh"
 else
-    echo "[WARNING] Vivado settings file not found at $VIVADO_SETTINGS, relying on system PATH."
+    echo "[WARNING] Vivado settings file not found at ${VIVADO_SETTINGS:-standard locations}, relying on system PATH."
 fi
 
 TCL_SCRIPT="$SCRIPT_DIR/arty_a7/synth_utilization.tcl"

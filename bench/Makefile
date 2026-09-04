@@ -5,7 +5,7 @@
 #   make verilator-kavacha    — build Kavacha Verilator model
 #   make run-kavacha          — run all benchmarks on Kavacha
 #   make coremark             — compile CoreMark
-#   make embench              — compile all 20 EMBench-IoT benchmarks
+#   make embench              — compile all 19 EMBench-IoT benchmarks
 #   make report               — generate benchmark report
 #   make all                  — build & run everything
 #
@@ -44,6 +44,7 @@ ifeq ($(RISCV_GCC),)
     $(shell command -v riscv64-elf-gcc         2>/dev/null) \
     $(shell command -v riscv32-elf-gcc         2>/dev/null) \
     $(shell command -v riscv-none-elf-gcc      2>/dev/null) \
+    $(wildcard /home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc) \
     NOTFOUND)
 endif
 
@@ -96,7 +97,7 @@ EXTRA_CFLAGS_wikisort := -include stdbool.h
 
 scale_for = $(if $(SCALE_$(1)),$(SCALE_$(1)),$(SCALE))
 
-# ---- EMBench benchmark list (all 20 from embench-iot) ----------------------
+# ---- EMBench benchmark list (19 from embench-iot) ----------------------
 EMBENCH_BENCHMARKS := \
     aha-mont64   crc32      depthconv  edn        huffbench  \
     matmult-int  md5sum     nettle-aes nettle-sha256 nsichneu \
@@ -227,7 +228,7 @@ $(BUILD_DIR):
 	mkdir -p $@
 
 ###############################################################################
-# embench — compile all 20 EMBench-IoT benchmarks
+# embench — compile all 19 EMBench-IoT benchmarks
 ###############################################################################
 .PHONY: embench
 embench: fetch-embench \
@@ -348,7 +349,7 @@ help:
 	@echo "  make fetch            — clone CoreMark and EMBench-IoT sources"
 	@echo "  make verilator-kavacha — build Kavacha Verilator simulation model"
 	@echo "  make coremark         — compile CoreMark (ITERATIONS=$(ITERATIONS))"
-	@echo "  make embench          — compile all 20 EMBench-IoT benchmarks"
+	@echo "  make embench          — compile all 19 EMBench-IoT benchmarks"
 	@echo "  make run-kavacha      — run CoreMark + EMBench on Kavacha"
 	@echo "  make report           — generate results report"
 	@echo "  make clean            — remove build/ and results/"

@@ -18,10 +18,10 @@ from datetime import datetime
 
 # ---------------------------------------------------------------------------
 EMBENCH_NAMES = [
-    "aha-mont64", "crc32", "cubic", "edn", "huffbench",
-    "matmult-int", "minver", "nbody", "nettle-aes", "nettle-sha256",
-    "nsichneu", "picojpeg", "primecount", "qrduino", "sglib-combined",
-    "slre", "st", "tarfind", "ud", "wikisort",
+    "aha-mont64", "crc32", "depthconv", "edn", "huffbench",
+    "matmult-int", "md5sum", "nettle-aes", "nettle-sha256",
+    "nsichneu", "picojpeg", "qrduino", "sglib-combined",
+    "slre", "statemate", "tarfind", "ud", "wikisort", "xgboost",
 ]
 REDUCED_SCALE = {"picojpeg", "nsichneu", "qrduino", "wikisort"}
 
@@ -78,7 +78,8 @@ def write_report(results_dir: Path, iterations: int, scale: int):
             f"- Status: **✅ PASS**",
             f"- Total sim cycles: **{fmt(cm['sim_cycles'])}**",
             f"- Cycles/iteration: **{cpi:,.1f}**",
-            f"- CoreMark/MHz @ 50 MHz: **{1e6/cpi*50:.2f} CoreMark/MHz**",
+            f"- CoreMark/MHz: **{1e6/cpi:.4f}**",
+            f"- Total Score @ 50 MHz: **{1e6/cpi*50:.2f}**",
             "",
         ]
     else:

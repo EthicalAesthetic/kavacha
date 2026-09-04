@@ -1,10 +1,10 @@
 // ============================================================================
 // kavacha_core.sv — RV32IM, MULTI-CYCLE (non-pipelined) area-optimized core.
 //
-// Kavacha ("armour") is the AstraV family's tiny / area class: one instruction
+// Kavacha ("armour") is a tiny, area-optimized core: one instruction
 // at a time through a small FSM — no pipeline, no forwarding, no hazard logic.
 // It trades throughput for minimal area and trivially-provable correctness, and
-// reuses the family's verified leaf cells (ALU, multiply/divide, register file,
+// uses pre-verified leaf cells (ALU, multiply/divide, register file,
 // CSR file).
 //
 //   FETCH -> EXEC -> { (alu/branch/jump/store/csr/system) -> FETCH

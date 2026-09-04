@@ -180,8 +180,8 @@ int main(int argc, char* argv[])
                     putchar((char)(val & 0xFF));
                     fflush(stdout);
                 }
-                // PASS
-                else if (val == 1u) {
+                // PASS (1 = standard pass, 0 = clean C exit(0))
+                else if (val == 1u || val == 0u) {
                     exit_code = 0;
                     if (got_hi && got_lo)
                         bench_cycles = (cy_hi << 30) | cy_lo;

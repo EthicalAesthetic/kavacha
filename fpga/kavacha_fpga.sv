@@ -70,6 +70,16 @@ module kavacha_fpga
 
   wire core_rst = rst | ndmreset;
 
+  // ---- 1-cycle memory stall logic ------------------------------------------
+  wire mem_req;
+  reg mem_stall_q;
+  always_ff @(posedge clk) begin
+    if (core_rst) mem_stall_q <= 1'b0;
+    else if (mem_req && !mem_stall_q) mem_stall_q <= 1'b1;
+    else mem_stall_q <= 1'b0;
+  end
+  wire mem_stall = (mem_req && !mem_stall_q);
+
   // ---- CLINT ---------------------------------------------------------------
   reg  [63:0] mtime, mtimecmp;
   reg         msip;
@@ -102,16 +112,6 @@ module kavacha_fpga
     .dm_mem_addr(dm_mem_addr), .dm_mem_wdata(dm_mem_wdata),
     .dm_mem_rdata(dm_mem_rdata), .dm_mem_ready(dm_mem_ready)
   );
-
-  // ---- 1-cycle memory stall logic ------------------------------------------
-  wire mem_req;
-  reg mem_stall_q;
-  always_ff @(posedge clk) begin
-    if (core_rst) mem_stall_q <= 1'b0;
-    else if (mem_req && !mem_stall_q) mem_stall_q <= 1'b1;
-    else mem_stall_q <= 1'b0;
-  end
-  wire mem_stall = (mem_req && !mem_stall_q);
 
   // ---- instruction fetch (synchronous read) --------------------------------
   reg [31:0] imem_rdata_q;
