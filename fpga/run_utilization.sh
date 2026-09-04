@@ -17,6 +17,9 @@ elif [ -n "${VIVADO_SETTINGS:-}" ] && [ -f "$VIVADO_SETTINGS" ]; then
 elif [ -f "/home/yash/Vivado/Vivado/2023.2/settings64.sh" ]; then
     echo "[INFO] Sourcing Vivado 2023.2 environment..."
     source "/home/yash/Vivado/Vivado/2023.2/settings64.sh"
+elif [ -f "/vivado/Vivado/2023.2/settings64.sh" ]; then
+    echo "[INFO] Sourcing Vivado 2023.2 environment..."
+    source "/vivado/Vivado/2023.2/settings64.sh"
 elif [ -f "/tools/Xilinx/Vivado/2023.2/settings64.sh" ]; then
     echo "[INFO] Sourcing Vivado 2023.2 environment..."
     source "/tools/Xilinx/Vivado/2023.2/settings64.sh"
@@ -24,12 +27,11 @@ elif [ -f "/opt/Xilinx/Vivado/2023.2/settings64.sh" ]; then
     echo "[INFO] Sourcing Vivado 2023.2 environment..."
     source "/opt/Xilinx/Vivado/2023.2/settings64.sh"
 else
-    echo "[ERROR] Vivado not found in PATH or standard installation directories."
-    exit 1
+    echo "[WARNING] Vivado settings file not found at ${VIVADO_SETTINGS:-standard locations}, relying on system PATH."
 fi
 
-TCL_SCRIPT="$SCRIPT_DIR/fpga/arty_a7/synth_utilization.tcl"
-BUILD_BASE="$SCRIPT_DIR/fpga/arty_a7/build_util"
+TCL_SCRIPT="$SCRIPT_DIR/arty_a7/synth_utilization.tcl"
+BUILD_BASE="$SCRIPT_DIR/arty_a7/build_util"
 
 mkdir -p "$BUILD_BASE"
 

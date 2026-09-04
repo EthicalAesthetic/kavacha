@@ -3,6 +3,19 @@ site_description: A compact, area-optimized RV32IMC processor core
 site_author: Kavacha Contributors
 copyright: Copyright &copy; 2026 Kavacha Contributors
 
+exclude_docs: |
+  architecture.md
+  benchmarks.md
+  bus-integration.md
+  csrs.md
+  debug.md
+  fpga.md
+  isa.md
+  memory-map.md
+  privilege-and-security.md
+  traps-and-interrupts.md
+  verification.md
+
 theme:
   name: material
   palette:
@@ -11,25 +24,27 @@ theme:
       primary: indigo
       accent: indigo
       toggle:
-        icon: material/weather-night
+        icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: indigo
       accent: indigo
       toggle:
-        icon: material/weather-sunny
+        icon: material/brightness-4
         name: Switch to light mode
   features:
     - navigation.instant
     - navigation.tracking
-    - navigation.sections
+    - navigation.path
     - navigation.top
     - navigation.footer
     - toc.follow
+    - content.code.annotate
     - content.code.copy
     - search.suggest
     - search.highlight
+    - search.share
   icon:
     repo: fontawesome/brands/github
 
@@ -57,19 +72,55 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
-  - Home: index.md
-  - Getting Started: getting-started.md
-  - Architecture: architecture.md
-  - Instruction Set: isa.md
-  - Memory Map: memory-map.md
-  - Control & Status Registers: csrs.md
-  - Traps & Interrupts: traps-and-interrupts.md
-  - Privilege & Security: privilege-and-security.md
-  - Debug: debug.md
-  - Bus Integration: bus-integration.md
-  - FPGA Bring-up: fpga.md
-  - Verification: verification.md
-  - Configuration Reference: configuration.md
+  - Overview & Getting Started:
+      - Welcome & Overview: index.md
+      - Quick Start & Build Drivers: getting-started.md
+      - Configuration Reference: configuration.md
+
+  - Architecture:
+      - Microarchitecture & Execution FSM: architecture/fsm.md
+      - Datapath & Leaf Cells: architecture/datapath.md
+      - Memory Interface & Alignment: architecture/memory-interface.md
+
+  - Instruction Set (ISA):
+      - RV32IMC Base & Compressed: isa/rv32imc.md
+      - Zicsr Extension: isa/zicsr.md
+      - Instruction Cycle Timing: isa/timing.md
+
+  - Security Tier (SECURE = 1):
+      - Security Tier Overview: security/overview.md
+      - User Privilege Mode & Transitions: security/privilege.md
+      - 8-Region PMP & ePMP Rules: security/pmp-epmp.md
+      - SECDED ECC Register File: security/ecc.md
+
+  - Register File & CSRs:
+      - Machine Mode CSRs: csrs/machine-csrs.md
+      - Security & ePMP CSRs: csrs/security-csrs.md
+
+  - Traps & Interrupts:
+      - Precise Exceptions & Traps: traps/exceptions.md
+      - Machine Interrupts & CLINT: traps/interrupts.md
+
+  - Bus & SoC Integration:
+      - Native Synchronous Memory Port: integration/native-port.md
+      - AXI4-Lite Master Wrapper: integration/axi4-lite.md
+      - Reference SoC Top (kavacha_soc): integration/soc-top.md
+
+  - Debug Subsystem:
+      - RISC-V External Debug & JTAG DTM: debug/jtag-dtm.md
+      - Debug Module (DM) Registers & Control: debug/dm-registers.md
+
+  - Verification & Compliance:
+      - Cocotb & Verilator Co-Simulation: verification/cocotb-verilator.md
+      - RVFI Formal Interface Compliance: verification/rvfi-compliance.md
+
+  - FPGA & ASIC Synthesis:
+      - Xilinx Artix-7 Synthesis & Vivado: synthesis/artix7-vivado.md
+      - ASIC Synthesis & OpenLane / Yosys: synthesis/asic-openlane.md
+
+  - Software & Firmware:
+      - Firmware Toolchain & Build Driver: software/build-system.md
+      - Bare-Metal C & FreeRTOS Porting: software/freertos.md
 
 plugins:
   - search

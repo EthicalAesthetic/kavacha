@@ -1,5 +1,10 @@
 # Kavacha
 
+<p align="center">
+  <img src="kavacha.png" alt="Kavacha Logo" width="600"/>
+</p>
+
+
 **Kavacha** (*"armour"*) is a compact, area-optimized **RV32IMC** processor
 core. It executes one instruction at a time through a small multi-cycle finite
 state machine — no pipeline, no forwarding, and no hazard logic — which keeps
@@ -56,9 +61,9 @@ cores.
 
 - New here? Start with **[Getting Started](getting-started.md)** to build and
   run the core.
-- Want the internals? See **[Architecture](architecture.md)** and the
-  **[Instruction Set](isa.md)**.
-- Integrating Kavacha into a design? See **[Memory Map](memory-map.md)**,
-  **[Bus Integration](bus-integration.md)**, and **[Configuration
+- Want the internals? See **[Architecture](architecture/fsm.md)** and the
+  **[Instruction Set](isa/rv32imc.md)**.
+- Integrating Kavacha into a design? See **[SoC Integration](integration/soc-top.md)**,
+  **[Bus Integration](integration/native-port.md)**, and **[Configuration
   Reference](configuration.md)**.
-- Bringing it up on hardware? See **[FPGA Bring-up](fpga.md)**.
+- Bringing it up on hardware? See **[FPGA Synthesis](synthesis/artix7-vivado.md)**.
