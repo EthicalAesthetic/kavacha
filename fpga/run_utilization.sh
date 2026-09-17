@@ -14,9 +14,6 @@ if command -v vivado &>/dev/null; then
 elif [ -n "${VIVADO_SETTINGS:-}" ] && [ -f "$VIVADO_SETTINGS" ]; then
     echo "[INFO] Sourcing Vivado from VIVADO_SETTINGS: $VIVADO_SETTINGS"
     source "$VIVADO_SETTINGS"
-elif [ -f "/home/yash/Vivado/Vivado/2023.2/settings64.sh" ]; then
-    echo "[INFO] Sourcing Vivado 2023.2 environment..."
-    source "/home/yash/Vivado/Vivado/2023.2/settings64.sh"
 elif [ -f "/vivado/Vivado/2023.2/settings64.sh" ]; then
     echo "[INFO] Sourcing Vivado 2023.2 environment..."
     source "/vivado/Vivado/2023.2/settings64.sh"

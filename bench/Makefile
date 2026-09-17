@@ -39,12 +39,11 @@ CXX       ?= g++
 ifeq ($(RISCV_GCC),)
   RISCV_GCC := $(firstword \
     $(wildcard $(RISCV_TC)/riscv-none-elf-gcc) \
+    $(shell command -v riscv-none-elf-gcc      2>/dev/null) \
     $(shell command -v riscv64-unknown-elf-gcc 2>/dev/null) \
     $(shell command -v riscv32-unknown-elf-gcc 2>/dev/null) \
     $(shell command -v riscv64-elf-gcc         2>/dev/null) \
     $(shell command -v riscv32-elf-gcc         2>/dev/null) \
-    $(shell command -v riscv-none-elf-gcc      2>/dev/null) \
-    $(wildcard /home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc) \
     NOTFOUND)
 endif
 

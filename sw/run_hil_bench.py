@@ -162,7 +162,6 @@ def flash_mem(mem_path, bit_path, build_dir, fpga="arty_a7_100t"):
     vivado_bin = _shutil.which("vivado")
     if not vivado_bin:
         for candidate in [
-            "/home/yash/Vivado/Vivado/2023.2/bin/vivado",
             "/tools/Xilinx/Vivado/2023.2/bin/vivado",
             "/opt/Xilinx/Vivado/2023.2/bin/vivado",
         ]:
