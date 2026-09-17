@@ -7,23 +7,20 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 GCC_BIN="$ROOT/verification/tools/gcc/bin/riscv-none-elf-gcc"
 OBJCOPY_BIN="$ROOT/verification/tools/gcc/bin/riscv-none-elf-objcopy"
 
-if [[ -x "/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc" ]]; then
-    GCC="/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-gcc"
-    OBJCOPY="/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin/riscv-none-elf-objcopy"
-elif command -v "$GCC_BIN" &>/dev/null; then
+if command -v "$GCC_BIN" &>/dev/null; then
     GCC="$GCC_BIN"
     OBJCOPY="$OBJCOPY_BIN"
 elif command -v riscv-none-elf-gcc &>/dev/null; then
     GCC="riscv-none-elf-gcc"
     OBJCOPY="riscv-none-elf-objcopy"
-elif command -v riscv64-elf-gcc &>/dev/null; then
-    GCC="riscv64-elf-gcc"
-    OBJCOPY="riscv64-elf-objcopy"
 elif command -v riscv64-unknown-elf-gcc &>/dev/null; then
     GCC="riscv64-unknown-elf-gcc"
     OBJCOPY="riscv64-unknown-elf-objcopy"
+elif command -v riscv64-elf-gcc &>/dev/null; then
+    GCC="riscv64-elf-gcc"
+    OBJCOPY="riscv64-elf-objcopy"
 else
-    echo "ERROR: RISC-V GCC not found."
+    echo "ERROR: RISC-V GCC not found. Ensure riscv-none-elf-gcc is in your PATH."
     exit 1
 fi
 

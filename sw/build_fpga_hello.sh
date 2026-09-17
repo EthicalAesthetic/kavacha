@@ -4,12 +4,12 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-TC="${RISCV_TC:-/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin}"
+TC="${RISCV_TC:-}"
 GCC="${GCC:-}"
 OBJCOPY="${OBJCOPY:-}"
 
 if [[ -z "$GCC" ]]; then
-  if [[ -x "$TC/riscv-none-elf-gcc" ]]; then
+  if [[ -n "$TC" && -x "$TC/riscv-none-elf-gcc" ]]; then
     GCC="$TC/riscv-none-elf-gcc"
     OBJCOPY="$TC/riscv-none-elf-objcopy"
   elif command -v riscv64-elf-gcc &>/dev/null; then

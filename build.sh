@@ -49,21 +49,21 @@ fi
 
 # ---- SECURE config: U-mode + PMP / ePMP -----------------------------------
 if [[ "$ACTION" == "pmp" || "$ACTION" == "epmp" ]]; then
-  TC="${RISCV_TC:-/home/yash/toolchains/xpack-riscv-none-elf-gcc-13.2.0-2/bin}"
+  TC="${RISCV_TC:-}"
   GCC=""
   OBJCOPY=""
-  if [[ -x "$TC/riscv-none-elf-gcc" ]]; then
+  if [[ -n "$TC" && -x "$TC/riscv-none-elf-gcc" ]]; then
     GCC="$TC/riscv-none-elf-gcc"
     OBJCOPY="$TC/riscv-none-elf-objcopy"
-  elif command -v riscv64-elf-gcc &>/dev/null; then
-    GCC=$(command -v riscv64-elf-gcc)
-    OBJCOPY=$(command -v riscv64-elf-objcopy)
   elif command -v riscv-none-elf-gcc &>/dev/null; then
     GCC=$(command -v riscv-none-elf-gcc)
     OBJCOPY=$(command -v riscv-none-elf-objcopy)
   elif command -v riscv64-unknown-elf-gcc &>/dev/null; then
     GCC=$(command -v riscv64-unknown-elf-gcc)
     OBJCOPY=$(command -v riscv64-unknown-elf-objcopy)
+  elif command -v riscv64-elf-gcc &>/dev/null; then
+    GCC=$(command -v riscv64-elf-gcc)
+    OBJCOPY=$(command -v riscv64-elf-objcopy)
   elif command -v riscv32-unknown-elf-gcc &>/dev/null; then
     GCC=$(command -v riscv32-unknown-elf-gcc)
     OBJCOPY=$(command -v riscv32-unknown-elf-objcopy)
