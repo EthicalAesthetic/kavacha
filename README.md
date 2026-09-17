@@ -43,12 +43,12 @@ Kavacha targets roles where silicon area, power, and security matter more than p
 
 ---
 
-![alt text](Kavacha_architecture_README.png)
+![Kavacha RV — RISC-V core by OR5 Labs](Kavacha_architecture_README.png)
 
 
 ## Features
 
-###  Predictable, Zero-Hazard Execution
+### Predictable, Zero-Hazard Execution
 A single instruction walks a short FSM (`FETCH → EXEC → {LOAD | MD} → FETCH`).
 There is nothing to forward and no hazard to detect — behaviour is completely
 deterministic, and correctness is easy to establish.
@@ -187,7 +187,7 @@ make verilator-kavacha
 # 2. Run CoreMark
 make run-kavacha-coremark ITERATIONS=1000
 
-# 3. Run all 19 EMBench-IoT benchmarks
+# 3. Run all 15 EMBench-IoT benchmarks
 make run-kavacha-embench
 
 # 4. Run Dhrystone (from its own directory)
