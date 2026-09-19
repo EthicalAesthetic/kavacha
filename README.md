@@ -1,3 +1,5 @@
+<p align="center"><a href="https://or5.org"><img src="assets/or5-logo.png" alt="OR5 Labs" width="120"></a></p>
+
 <div align="center">
 
 # Kavacha
