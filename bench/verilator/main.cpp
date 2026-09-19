@@ -12,7 +12,6 @@
 //   • tohost >= 2           → FAIL (code = tohost value)
 //   • cycles > max_cycles   → TIMEOUT
 //
-// tohost side-channel protocol (used by EMBench bench_main.c):
 //   write 0xC0000000|(hi24)  → upper 30 bits of 64-bit cycle count
 //   write 0x80000000|(lo30)  → lower 30 bits (printed together on PASS)
 //   write 1                  → PASS / done
