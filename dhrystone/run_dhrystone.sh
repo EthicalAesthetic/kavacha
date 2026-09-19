@@ -64,7 +64,12 @@ echo "========================================="
 echo " Running Dhrystone Simulation            "
 echo "========================================="
 
-make -C "$ROOT/bench" run-kavacha-dhrystone HEX_FILE="$SCRIPT_DIR/build/dhrystone.hex" TIMEOUT_CYCLES=300000000 || true
+make -C "$ROOT/bench" run-kavacha-dhrystone HEX_FILE="$SCRIPT_DIR/build/dhrystone.hex" TIMEOUT_CYCLES=300000000
+
+# Fail unless the simulation reached tohost=1 (no FAIL / TIMEOUT).
+grep -aqE '^\[BENCH\] dhrystone .* PASS$' "$ROOT/bench/results/kavacha/dhrystone.log" ||
+  { echo "Dhrystone: FAIL (see bench/results/kavacha/dhrystone.log)"; exit 1; }
+echo "Dhrystone: PASS"
 
 echo "Done."
 

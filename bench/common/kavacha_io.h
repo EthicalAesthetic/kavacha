@@ -39,4 +39,19 @@ static inline uint32_t read_mcycle(void)
     return v;
 }
 
+/* ---- side-channel cycle report (used by the CoreMark port) ---------------- */
+/*
+ * Reports a 60-bit cycle count via two tohost writes before the final PASS:
+ *   tohost = 0xC0000000 | upper_30_bits   (marker = 2'b11)
+ *   tohost = 0x80000000 | lower_30_bits   (marker = 2'b10)
+ * The Verilator harness reconstructs the 64-bit value.
+ */
+static inline void report_cycles(uint64_t cycles)
+{
+    uint32_t hi = (uint32_t)(cycles >> 30) & 0x3FFFFFFFu;
+    uint32_t lo = (uint32_t)(cycles)       & 0x3FFFFFFFu;
+    write_tohost(0xC0000000u | hi);
+    write_tohost(0x80000000u | lo);
+}
+
 #endif /* KAVACHA_IO_H */

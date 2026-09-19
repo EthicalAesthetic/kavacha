@@ -3,6 +3,13 @@
 //
 //   vvp sim/tb_kavacha +IMEM=programs/build/smoke.hex
 //   vvp sim/tb_kavacha +IMEM=... +TRACE=1   (emit retire trace for co-sim)
+//   vvp sim/tb_kavacha +IMEM=... +DRAM=<hex>  (also preload DRAM @0x8000_0000)
+//   vvp sim/tb_kavacha +IMEM=... +MAXCYC=<n>  (cycle limit, default 200000)
+//   vvp sim/tb_kavacha +IMEM=... +IMEM_WRITABLE
+//       testbench memory model only: data stores into the IMEM window also
+//       update IMEM (the SoC's IMEM is fetch + read-only data). run_isa.sh uses
+//       it because riscv-tests expect one read/write memory (rv32uc/rvc stores
+//       into data placed in its own code section).
 //
 // Exit protocol: a store to tohost (0x2000_0000) ends the run.
 //   tohost == 1  -> PASS
@@ -32,8 +39,9 @@ module tb_kavacha;
     .retire_rd(retire_rd), .retire_rd_val(retire_rd_val)
   );
 
-  string imem_file;
+  string imem_file, dram_file;
   integer trace_en;
+  integer max_cyc = 200000;
   integer i;
 
   initial begin
@@ -43,6 +51,7 @@ module tb_kavacha;
     end
     trace_en = 0;
     if ($value$plusargs("TRACE=%d", trace_en)) ;
+    if ($value$plusargs("MAXCYC=%d", max_cyc)) ;
 
     // clear memories
     for (i = 0; i < 8192; i = i + 1) begin
@@ -52,6 +61,10 @@ module tb_kavacha;
 
     $display("[TB] Loading IMEM from: %s", imem_file);
     $readmemh(imem_file, dut.imem);
+    if ($value$plusargs("DRAM=%s", dram_file)) begin
+      $display("[TB] Loading DRAM from: %s", dram_file);
+      $readmemh(dram_file, dut.dram);
+    end
 
     if ($test$plusargs("VCD")) begin
       $dumpfile("tb_kavacha.vcd");
@@ -72,6 +85,16 @@ module tb_kavacha;
     end
   end
 
+  // optional writable IMEM (see header)
+  integer imem_wr = 0;
+  integer b;
+  initial if ($test$plusargs("IMEM_WRITABLE")) imem_wr = 1;
+  always @(posedge clk) begin
+    if (imem_wr != 0 && !rst && dut.dmem_we && dut.in_imem)
+      for (b = 0; b < 4; b = b + 1)
+        if (dut.dmem_be[b]) dut.imem[dut.imem_didx][b*8 +: 8] <= dut.dmem_wdata[b*8 +: 8];
+  end
+
   // exit on tohost
   integer cycle = 0;
   always @(posedge clk) begin
@@ -82,7 +105,7 @@ module tb_kavacha;
       else                 $display("[TB] FAIL (code %0d)", tohost);
       $finish;
     end
-    if (cycle > 200000) begin
+    if (cycle > max_cyc) begin
       $display("[TB] TIMEOUT — no tohost write");
       $finish;
     end

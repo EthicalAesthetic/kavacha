@@ -40,12 +40,25 @@ if [[ "$ACTION" == "clean" ]]; then
 fi
 mkdir -p sim programs/build
 
+# Most testbenches end with $finish whatever the outcome, so vvp exits 0 even
+# on failure. check_verdict fails the script unless the log holds the expected
+# PASS verdict and no FAIL / TIMEOUT / MISMATCH / FATAL / ERROR line.
+check_verdict() {  # $1 = test name, $2 = log file, $3 = PASS regex
+  if grep -aEq '\bFAIL|TIMEOUT|MISMATCH|FATAL|^ERROR' "$2"; then
+    echo "$1: FAILED (failure reported in $2)"; exit 1
+  fi
+  if ! grep -aEq "$3" "$2"; then
+    echo "$1: FAILED (no PASS verdict in $2)"; exit 1
+  fi
+}
+
 # ---- register-file ECC (SECDED) unit test ---------------------------------
 if [[ "$ACTION" == "ecc" ]]; then
   echo "Building register-file SECDED ECC unit test..."
   "$IVL" -g2012 -I "$C" -o sim/tb_regfile_ecc \
     "$C/kavacha_pkg.sv" "$C/kavacha_regfile_ecc.sv" tb/tb_regfile_ecc.sv
-  "$VVP" sim/tb_regfile_ecc
+  "$VVP" sim/tb_regfile_ecc | tee sim/ecc.log
+  check_verdict ecc sim/ecc.log '^ECC: PASS'
   exit 0
 fi
 
@@ -99,16 +112,17 @@ if [[ "$ACTION" == "pmp" || "$ACTION" == "epmp" || "$ACTION" == "upriv" || "$ACT
   echo "Running $ACTION test on Kavacha..."
   "$VVP" sim/tb_kavacha +IMEM="programs/build/${HEXNAME}.hex" | tee "sim/${HEXNAME}.log"
   # The testbench ends with $finish either way; fail the script unless it passed.
-  grep -q '^\[TB\] PASS' "sim/${HEXNAME}.log" || { echo "$ACTION: FAILED"; exit 1; }
+  check_verdict "$ACTION" "sim/${HEXNAME}.log" '^\[TB\] PASS'
   exit 0
 fi
 
 # ---- default: compile + smoke ---------------------------------------------
-python programs/build_smoke.py
+python3 programs/build_smoke.py
 echo "Compiling..."
 "$IVL" -g2012 -I "$C" -I "$R" -o sim/tb_kavacha $CELLS $CORE tb/tb_kavacha.sv
 echo "Running smoke..."
-"$VVP" sim/tb_kavacha +IMEM=programs/build/smoke.hex
+"$VVP" sim/tb_kavacha +IMEM=programs/build/smoke.hex | tee sim/smoke.log
+check_verdict smoke sim/smoke.log '^\[TB\] PASS'
 
 # ---- golden co-simulation --------------------------------------------------
 if [[ "$ACTION" == "cosim" ]]; then
@@ -122,7 +136,8 @@ if [[ "$ACTION" == "rvfi" ]]; then
   echo "Building RVFI self-check..."
   "$IVL" -g2012 -DRISCV_FORMAL -I "$C" -I "$R" -o sim/tb_kavacha_rvfi \
     $CELLS $CORE tb/tb_kavacha_rvfi.sv
-  "$VVP" sim/tb_kavacha_rvfi +IMEM=programs/build/smoke.hex
+  "$VVP" sim/tb_kavacha_rvfi +IMEM=programs/build/smoke.hex | tee sim/rvfi.log
+  check_verdict rvfi sim/rvfi.log '^RVFI: PASS'
 fi
 
 # ---- JTAG / Debug-Module self-check ---------------------------------------
@@ -130,7 +145,8 @@ if [[ "$ACTION" == "debug" ]]; then
   echo "Building JTAG / Debug-Module self-check..."
   "$IVL" -g2012 -I "$C" -I "$R" -o sim/tb_kavacha_debug \
     $CELLS $CORE tb/tb_kavacha_debug.sv
-  "$VVP" sim/tb_kavacha_debug +IMEM=programs/build/smoke.hex
+  "$VVP" sim/tb_kavacha_debug +IMEM=programs/build/smoke.hex | tee sim/debug.log
+  check_verdict debug sim/debug.log '^DEBUG: PASS'
 fi
 
 # ---- Verilator benchmark suite (CoreMark) -------------------
@@ -154,7 +170,8 @@ if [[ "$ACTION" == "axil" ]]; then
   python3 programs/build_smoke.py
   "$IVL" -g2012 -I "$C" -I "$R" -o sim/tb_kavacha_axil \
     $CELLS "$R/kavacha_core.sv" "$R/kavacha_debug.sv" "$R/kavacha_axil.sv" tb/tb_kavacha_axil.sv
-  "$VVP" sim/tb_kavacha_axil +IMEM=programs/build/smoke.hex
+  "$VVP" sim/tb_kavacha_axil +IMEM=programs/build/smoke.hex | tee sim/axil.log
+  check_verdict axil sim/axil.log '^\[TB\] PASS'
   exit 0
 fi
 
@@ -165,5 +182,6 @@ if [[ "$ACTION" == "fpga" ]]; then
   "$IVL" -g2012 -DSIMULATION -I "$C" -I "$R" -o sim/tb_kavacha_fpga \
     $CELLS "$R/kavacha_core.sv" "$R/kavacha_debug.sv" \
     fpga/common/kavacha_uart.sv fpga/kavacha_fpga.sv fpga/tb_kavacha_fpga.sv
-  "$VVP" sim/tb_kavacha_fpga
+  "$VVP" sim/tb_kavacha_fpga | tee sim/fpga.log
+  check_verdict fpga sim/fpga.log '^FPGA: PASS'
 fi

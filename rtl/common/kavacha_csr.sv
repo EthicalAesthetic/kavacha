@@ -114,6 +114,22 @@ module kavacha_csr
   wire [31:0] mcycle_lo   = mcycle[31:0];
   wire [31:0] mcycle_hi   = mcycle[63:32];
   wire [31:0] minstret_lo = minstret[31:0];
+  wire [31:0] minstret_hi = minstret[63:32];
+
+  // mstatus is WARL: only MIE, MPIE, MPP (and MPRV with U-mode) exist; all
+  // other bits read 0. MPP holds only implemented modes: M alone without
+  // U-mode, M or U with it (a write of an unsupported mode keeps the old MPP).
+  function automatic logic [XLEN-1:0] mstatus_wr(input logic [XLEN-1:0] v,
+                                                 input logic [XLEN-1:0] old);
+    mstatus_wr = '0;
+    mstatus_wr[MIE_BIT]  = v[MIE_BIT];
+    mstatus_wr[MPIE_BIT] = v[MPIE_BIT];
+    if (!U_MODE) mstatus_wr[12:11] = 2'b11;
+    else begin
+      mstatus_wr[12:11] = (v[12:11] == 2'b00 || v[12:11] == 2'b11) ? v[12:11] : old[12:11];
+      mstatus_wr[17]    = v[17];
+    end
+  endfunction
 
   // ---- interrupts ----------------------------------------------------------
   // mip is read-only here, driven by the pending lines (MEIP/MTIP/MSIP).
@@ -145,9 +161,11 @@ module kavacha_csr
       CSR_MCYCLE   : csr_rdata = mcycle_lo;
       CSR_MCYCLEH  : csr_rdata = mcycle_hi;
       CSR_MINSTRET : csr_rdata = minstret_lo;
+      CSR_MINSTRETH: csr_rdata = minstret_hi;
       12'hC00      : csr_rdata = mcycle_lo;    // cycle   (user-mode alias)
       12'hC80      : csr_rdata = mcycle_hi;    // cycleh  (user-mode alias)
       12'hC02      : csr_rdata = minstret_lo;  // instret (user-mode alias)
+      12'hC82      : csr_rdata = minstret_hi;  // instreth (user-mode alias)
       CSR_MVENDORID: csr_rdata = '0;
       CSR_MARCHID  : csr_rdata = 32'h41535452;   // "ASTR"
       CSR_MHARTID  : csr_rdata = '0;
@@ -158,7 +176,7 @@ module kavacha_csr
   // ---- write / trap / counters --------------------------------------------
   always_ff @(posedge clk) begin
     if (rst) begin
-      mstatus  <= '0;
+      mstatus  <= U_MODE ? '0 : (32'b11 << 11);   // MPP reads M without U-mode
       mtvec    <= '0;
       mepc     <= '0;
       mcause   <= '0;
@@ -211,13 +229,16 @@ module kavacha_csr
             mseccfg[2] <= csr_wdata[2];
         end
         else unique case (csr_addr)
-          CSR_MSTATUS  : mstatus  <= csr_wdata;
+          CSR_MSTATUS  : mstatus  <= mstatus_wr(csr_wdata, mstatus);
           CSR_MIE      : mie      <= csr_wdata;
           CSR_MTVEC    : mtvec    <= csr_wdata;
           CSR_MSCRATCH : mscratch <= csr_wdata;
           CSR_MEPC     : mepc     <= csr_wdata;
           CSR_MCAUSE   : mcause   <= csr_wdata;
           CSR_MTVAL    : mtval    <= csr_wdata;
+          // minstret is writable; the write replaces this instruction's increment
+          CSR_MINSTRET : minstret <= {minstret_hi, csr_wdata};
+          CSR_MINSTRETH: minstret <= {csr_wdata, minstret_lo};
           default      : /* read-only or unimplemented: ignore */ ;
         endcase
       end

@@ -38,7 +38,7 @@ Kavacha targets roles where silicon area, power, and security matter more than p
 | Privilege modes | Machine; optional User (`SECURE`) |
 | Debug | RISC-V External Debug 0.13 over JTAG (DTM + DM; `dmstatus.version` = 2) |
 | Bus interfaces | Native memory port + AXI4-Lite |
-| Verification | Golden co-simulation, RVFI, self-checks |
+| Verification | Official riscv-tests (rv32ui/um/uc/mi), golden co-simulation, RVFI, self-checks |
 
 
 ---
@@ -62,7 +62,7 @@ The optional `SECURE` configuration adds a **User privilege mode** and an **8-re
 The `SECURE` configuration replaces the plain register file with a **SECDED** (single-error-correct, double-error-detect) protected version. Each register is stored with check bits so that a single-bit upset is corrected on read and a double-bit upset is detected — critical for radiation-sensitive and reliability-critical deployments.
 
 ###  Verification
-The smoke program is co-simulated retire-for-retire against a **golden RV32IM ISA model**; the core exposes an **RVFI** (RISC-V Formal Interface) port with a trace self-check (riscv-formal has not been run yet), and ships self-checking testbenches for the core, the debug module, and the ECC register file.
+The official **riscv-tests** ISA suites (rv32ui, rv32um, rv32uc, rv32mi) run on the core's own testbench and SoC in both configurations (`./run_isa.sh all`, results [below](#official-isa-tests-riscv-tests)). The smoke program is co-simulated retire-for-retire against a **golden RV32IM ISA model**; the core exposes an **RVFI** (RISC-V Formal Interface) port with a trace self-check (riscv-formal has not been run yet), and ships self-checking testbenches for the core, the debug module, and the ECC register file.
 
 ###  Dual Bus Interfaces
 - **Native memory port** — for tightest, zero-latency tightly-coupled memory integration.
@@ -75,7 +75,7 @@ A JTAG Debug Transport Module and RISC-V Debug Module let **OpenOCD** and **GDB*
 Full support for the **C extension** — 16-bit compressed instructions are transparently expanded to their 32-bit equivalents, improving code density for memory-constrained deployments.
 
 ###  Precise Traps & Interrupts
-Exceptions (`ECALL`, `EBREAK`, illegal instruction, misaligned access), `MRET`, and timer / software / external interrupt lines are all handled precisely at instruction boundaries.
+Exceptions (`ECALL`, `EBREAK`, illegal instruction, and PMP access faults in the `SECURE` build), `MRET`, and timer / software / external interrupt lines are all handled precisely at instruction boundaries. Misaligned loads and stores do not trap: the core performs them in hardware as two memory beats.
 
 ---
 
@@ -144,28 +144,29 @@ All benchmarks are compiled with:
 ```
 riscv-none-elf-gcc -O2 -march=rv32imc_zicsr -mabi=ilp32
 ```
-Results below are from cycle-accurate simulation, not from an FPGA run.
+Results below are from cycle-accurate Verilator simulation of the current RTL
+(`coremark/run_coremark_sim.sh` and `dhrystone/run_dhrystone.sh`), not from an FPGA run.
 
 ### CoreMark
 
 | Metric | Simulation (cycle-accurate) |
 |--------|-------------------------|
 | Iterations | 1,000 |
-| Total cycles | 1,234,774,918 |
-| Cycles / iteration | 1,234,774.9 |
-| CoreMark / MHz | **0.81** |
-| Status | ✅ PASS |
+| Total cycles (timed region) | 847,547,135 |
+| Cycles / iteration | 847,547.1 |
+| CoreMark / MHz | **1.18** |
+| Status | PASS ("Correct operation validated", CRCs match) |
 
 ### Dhrystone v2.1
 
 | Metric | Simulation (cycle-accurate) |
 |--------|-------------------------|
 | Iterations | 100,000 |
-| Total cycles | 207,900,101 |
-| Cycles / iteration | 2,079 |
-| Dhrystones / sec / MHz | 481 |
-| DMIPS / MHz | **0.274** |
-| Status | ✅ PASS |
+| Total cycles (timed region) | 146,300,070 |
+| Cycles / iteration | 1,463 |
+| Dhrystones / sec / MHz | 683 |
+| DMIPS / MHz | **0.388** |
+| Status | PASS (reached tohost = 1) |
 
 ###  Reproduce It Yourself
 
@@ -206,13 +207,17 @@ kavacha/
 │                           immediate/branch units, decoder, RVC, PMP, ECC)
 ├── tb/                  Testbenches (smoke, RVFI, debug, AXI-Lite, ECC)
 ├── tools/               Golden ISA model + co-simulation driver
+├── third_party/         Official riscv-tests sources + Kavacha test environment
+├── tests/               expected.txt: recorded results for run_tests.sh
 ├── programs/            Test-program builders
 ├── sw/                  Assembly test programs & bring-up firmware
 ├── fpga/                FPGA SoC + Arty A7 constraints
 ├── bench/               Benchmarking suite (CoreMark)
 ├── dhrystone/           Dhrystone v2.1 benchmark
 ├── coremark/            CoreMark FPGA runners
-└── build.sh             Build & test driver
+├── build.sh             Build & test driver
+├── run_isa.sh           Official riscv-tests runner
+└── run_tests.sh         Runs every test target and compares with tests/expected.txt
 ```
 
 ---
@@ -250,6 +255,8 @@ Expected output:
 ./build.sh debug    # JTAG / Debug-Module self-check
 ./build.sh pmp      # SECURE config: User mode + PMP test program
 ./build.sh epmp     # SECURE config: Smepmp (mseccfg) rules test
+./build.sh upriv    # SECURE config: U-mode CSR / MRET privilege checks
+./build.sh mml      # SECURE config: Smepmp machine mode lockdown rules
 ./build.sh ecc      # Register-file SECDED ECC unit test
 ./build.sh axil     # AXI4-Lite adapter self-check
 ./build.sh fpga     # FPGA SoC simulation (UART banner + LED activity)
@@ -269,6 +276,73 @@ Expected output:
 | ECC unit test | `ecc` | The register file corrects/detects bit errors |
 | AXI4-Lite test | `axil` | Native memory bus to AXI4-Lite protocol conversion |
 | FPGA SoC test | `fpga` | Full SoC simulation with synthesizable UART and Debug Module |
+
+Every `build.sh` target exits non-zero unless its testbench prints its PASS
+verdict and no FAIL / TIMEOUT / MISMATCH / FATAL / ERROR line. `tools/cosim.py`
+also fails when there is no retire trace to compare.
+
+### Test status
+
+`./run_tests.sh` runs every target below and compares each exit code and its
+PASS/FAIL verdict-line counts with `tests/expected.txt`; CI runs it on pushes and pull requests to `main`.
+Result of the last run (Ubuntu 24.04, Icarus Verilog 12, Verilator 5.020, RISC-V GCC 13.2):
+
+| Target | Result |
+|--------|--------|
+| `build.sh sim` / `cosim` / `rvfi` / `debug` | PASS |
+| `build.sh pmp` / `epmp` / `upriv` / `mml` (SECURE) | PASS |
+| `build.sh ecc` / `axil` / `fpga` | PASS |
+| `run_isa.sh all` (official riscv-tests, both builds) | PASS: 131 passed, 0 failed, 3 skipped |
+| `coremark/run_coremark_10.sh` | PASS |
+| `dhrystone/run_dhrystone.sh` | PASS |
+
+### Official ISA tests (riscv-tests)
+
+`./run_isa.sh all` builds the official [riscv-tests](https://github.com/riscv/riscv-tests)
+(vendored under `third_party/riscv-tests` with their BSD license) and runs them on
+the core's own testbench (`tb/tb_kavacha.sv`) and SoC. The environment in
+`third_party/riscv-tests/env` follows the riscv-test-env "p" environment, adapted
+to Kavacha: code is linked at `0x0` (IMEM), data at `0x8000_0000` (DRAM), and
+tohost is the SoC exit register at `0x2000_0000`. Because riscv-tests assume a
+single read/write memory, the testbench runs them with `+IMEM_WRITABLE`, a
+testbench-only option that lets data stores also update IMEM (`rv32uc/rvc`
+stores into data placed in its code section).
+
+| Suite | Default build | SECURE build (rv32u* run in U-mode) |
+|-------|---------------|--------------------------------------|
+| rv32ui | 41 / 41 pass, 1 skipped | 41 / 41 pass, 1 skipped |
+| rv32um | 8 / 8 pass | 8 / 8 pass |
+| rv32uc | 1 / 1 pass | 1 / 1 pass |
+| rv32mi | 15 / 15 pass, 1 skipped | 16 / 16 pass |
+| **Total** | **65 passed, 0 failed, 2 skipped** | **66 passed, 0 failed, 1 skipped** |
+
+Skipped, with the reason printed by the script:
+- `rv32ui/fence_i` (both builds): Zifencei is not implemented; `FENCE.I` raises an illegal-instruction trap.
+- `rv32mi/pmpaddr` (default build): the test assumes PMP, which only the SECURE build has.
+
+Some rv32mi tests skip parts of themselves by design when a feature is absent:
+`breakpoint` (no trigger module) and `illegal` (no Supervisor mode).
+
+The ISA tests found three CSR bugs, fixed in this release:
+- `mstatus` stored every written bit, so `MPP` could hold Supervisor mode, which Kavacha does not have
+  (`rv32mi/illegal` hung). `mstatus` is now WARL: only MIE, MPIE, MPP (and MPRV with U-mode)
+  exist, and `MPP` holds only implemented modes (always M in the default build).
+- `minstret` ignored writes and `minstreth` / `instreth` did not exist (`rv32mi/instret_overflow`).
+- Writing a read-only CSR (address bits [11:10] = 11, for example `cycle`) did not trap
+  (`rv32mi/csr`, SECURE build). It now raises an illegal-instruction trap.
+
+### Known limitations
+
+- **Zifencei:** not implemented; `FENCE.I` is an illegal instruction.
+- **Unimplemented CSRs do not trap:** reading an unimplemented CSR address (for example
+  `mcounteren`, `0x306`) returns 0 and a write is ignored, instead of an illegal-instruction trap.
+  There is no `mcounteren`, so User-mode access to `cycle` / `instret` cannot be disabled.
+- **`mtvec` MODE:** only direct mode is supported, but `mtvec` stores the MODE bits as written;
+  software must write MODE = 0, otherwise traps jump to BASE + MODE.
+- **`mcycle` / `mcycleh`:** writes are ignored (the counter only counts).
+- **Memory map:** in `kavacha_soc` the IMEM is not writable by data stores (fetch port plus a
+  read-only data port); stores to that range are dropped.
+- The design has not had an independent security review, and riscv-formal has not been run.
 
 
 ## License

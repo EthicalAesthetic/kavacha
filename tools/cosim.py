@@ -42,6 +42,10 @@ def main():
     print(f"[cosim] RTL retires={len(rtl)}  golden retires={len(gold)}")
 
     n = min(len(rtl), len(gold))
+    if n == 0:
+        print("[cosim] MISMATCH: no retire trace to compare "
+              f"(RTL {len(rtl)}, golden {len(gold)})")
+        sys.exit(3)
     for i in range(n):
         rp, ri, rwe, rd_, rv = rtl[i]
         gp, gi, gwe, gd, gv = gold[i]

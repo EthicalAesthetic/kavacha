@@ -80,3 +80,6 @@ sw/firmware.mem
 
 # test benchmarks
 benchmarks/coremark_sim.log
+
+# test runner outputs (run_tests.sh, run_isa.sh)
+/build/

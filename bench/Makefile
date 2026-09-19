@@ -208,7 +208,7 @@ KAVACHA_RESULTS := $(RESULTS_DIR)/kavacha
 run-coremark: run-kavacha-coremark
 run-kavacha-coremark: $(SIM_BIN) $(COREMARK_HEX) | $(KAVACHA_RESULTS) $(RESULTS_DIR)
 	@echo "[RUN/Kavacha] CoreMark..."
-	$(SIM_BIN) --hex $(COREMARK_HEX) --name coremark \
+	set -o pipefail; $(SIM_BIN) --hex $(COREMARK_HEX) --name coremark \
 	    --max-cycles $(TIMEOUT_CYCLES) \
 	    | tee $(KAVACHA_RESULTS)/coremark.log
 
@@ -217,7 +217,7 @@ DHRYSTONE_HEX ?= $(ROOT_DIR)/dhrystone/build/dhrystone.hex
 .PHONY: run-dhrystone run-kavacha-dhrystone
 run-dhrystone: run-kavacha-dhrystone
 run-kavacha-dhrystone: $(SIM_BIN) | $(KAVACHA_RESULTS) $(RESULTS_DIR)
-	@HEX=$${HEX_FILE:-$(DHRYSTONE_HEX)}; \
+	@set -o pipefail; HEX=$${HEX_FILE:-$(DHRYSTONE_HEX)}; \
 	echo "[RUN/Kavacha] Dhrystone ($$HEX)..."; \
 	$(SIM_BIN) --hex "$$HEX" --name dhrystone \
 	    --max-cycles $(TIMEOUT_CYCLES) \

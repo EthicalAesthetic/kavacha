@@ -68,6 +68,7 @@ package kavacha_pkg;
   localparam logic [11:0] CSR_MCYCLE   = 12'hB00;
   localparam logic [11:0] CSR_MINSTRET = 12'hB02;
   localparam logic [11:0] CSR_MCYCLEH  = 12'hB80;
+  localparam logic [11:0] CSR_MINSTRETH= 12'hB82;
   localparam logic [11:0] CSR_MISA     = 12'h301;
   localparam logic [11:0] CSR_MVENDORID= 12'hF11;
   localparam logic [11:0] CSR_MARCHID  = 12'hF12;

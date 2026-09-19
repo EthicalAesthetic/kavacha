@@ -252,7 +252,9 @@ module kavacha_core
   // MRET, are illegal instructions. Debug-mode CSR access is unaffected.
   wire priv_u      = SECURE && (cur_priv == 2'b00);
   wire priv_fault  = priv_u && ((d_is_csr && (sys_imm12[9:8] != 2'b00)) || d_is_mret);
-  wire illegal_any = d_illegal | priv_fault;
+  // Writing a read-only CSR (addr[11:10] == 11) is an illegal instruction.
+  wire csr_ro_fault = d_is_csr && csr_do_write && (sys_imm12[11:10] == 2'b11);
+  wire illegal_any = d_illegal | priv_fault | csr_ro_fault;
 
   // trap (priv-aware ecall cause; PMP access faults 1/5/7)
   wire ex_trap = (state==S_EXEC) &&

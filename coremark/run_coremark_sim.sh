@@ -73,3 +73,11 @@ try:
 except Exception as e:
     print(f"Error parsing log: {e}")
 '
+
+# Fail unless the simulation passed and CoreMark's CRC self-checks found no error.
+LOG=results/kavacha/coremark.log
+if grep -aq 'ERROR! \(list\|matrix\|state\) crc' "$LOG" ||
+   ! grep -aqE '^\[BENCH\] coremark .* PASS$' "$LOG"; then
+  echo "CoreMark: FAIL (see bench/$LOG)"; exit 1
+fi
+echo "CoreMark: PASS"
