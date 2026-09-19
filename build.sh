@@ -2,7 +2,7 @@
 # ============================================================================
 # build.sh — build & run Kavacha under Icarus Verilog.
 #
-#   ./build.sh [sim|cosim|rvfi|debug|pmp|epmp|ecc|axil|fpga|bench|clean]
+#   ./build.sh [sim|cosim|rvfi|debug|pmp|epmp|upriv|mml|ecc|axil|fpga|bench|clean]
 #
 #   sim    (default) compile the core + SoC and run the self-checking smoke test
 #   cosim  run smoke, then co-simulate against the golden RV32IM ISA model
@@ -10,6 +10,8 @@
 #   debug  build the JTAG / Debug-Module self-check
 #   pmp    build the SECURE config (U-mode + PMP) and run the PMP test program
 #   epmp   as pmp, exercising the ePMP (mseccfg) rules
+#   upriv  SECURE: U-mode access to M-level CSRs and MRET must trap
+#   mml    SECURE: Smepmp mseccfg.MML (machine mode lockdown) rules
 #   ecc    build the register-file SECDED ECC unit test
 #   axil   build the AXI4-Lite master/slave interconnect self-check
 #   fpga   build the FPGA SoC sim (UART banner + LED blink) from firmware.mem
@@ -48,7 +50,7 @@ if [[ "$ACTION" == "ecc" ]]; then
 fi
 
 # ---- SECURE config: U-mode + PMP / ePMP -----------------------------------
-if [[ "$ACTION" == "pmp" || "$ACTION" == "epmp" ]]; then
+if [[ "$ACTION" == "pmp" || "$ACTION" == "epmp" || "$ACTION" == "upriv" || "$ACTION" == "mml" ]]; then
   TC="${RISCV_TC:-}"
   GCC=""
   OBJCOPY=""
@@ -72,6 +74,10 @@ if [[ "$ACTION" == "pmp" || "$ACTION" == "epmp" ]]; then
   SRCASM=sw/pmp_test.S; HEXNAME=pmp
   if [[ "$ACTION" == "epmp" ]]; then
     SRCASM=sw/epmp_test.S; HEXNAME=epmp
+  elif [[ "$ACTION" == "upriv" ]]; then
+    SRCASM=sw/upriv_test.S; HEXNAME=upriv
+  elif [[ "$ACTION" == "mml" ]]; then
+    SRCASM=sw/mml_test.S; HEXNAME=mml
   fi
 
   if [[ -n "$GCC" && -x "$GCC" ]]; then
@@ -91,7 +97,9 @@ if [[ "$ACTION" == "pmp" || "$ACTION" == "epmp" ]]; then
   "$IVL" -g2012 -DKAVACHA_SECURE -I "$C" -I "$R" -o sim/tb_kavacha \
     $CELLS "$C/kavacha_regfile_ecc.sv" $CORE tb/tb_kavacha.sv
   echo "Running $ACTION test on Kavacha..."
-  "$VVP" sim/tb_kavacha +IMEM="programs/build/${HEXNAME}.hex"
+  "$VVP" sim/tb_kavacha +IMEM="programs/build/${HEXNAME}.hex" | tee "sim/${HEXNAME}.log"
+  # The testbench ends with $finish either way; fail the script unless it passed.
+  grep -q '^\[TB\] PASS' "sim/${HEXNAME}.log" || { echo "$ACTION: FAILED"; exit 1; }
   exit 0
 fi
 

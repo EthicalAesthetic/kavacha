@@ -222,7 +222,7 @@ module kavacha_core
   // Only elaborated when SECURE=1 (else zero-cost: priv stays M, no PMP logic).
   localparam int NPMP = 8;
   wire [1:0]   cur_priv;
-  wire         fetch_m, data_m, mmwp_w;
+  wire         fetch_m, data_m, mmwp_w, mml_w;
   wire [127:0] pmpcfg_w;
   wire [511:0] pmpaddr_w;
   wire acc_fetch_fault, acc_load_fault, acc_store_fault;
@@ -230,12 +230,12 @@ module kavacha_core
     wire pmp_fetch_fault, pmp_data_fault;
     kavacha_pmp #(.NPMP(NPMP)) u_pmp_if (    // instruction-fetch check
       .cfg(pmpcfg_w[8*NPMP-1:0]), .addrreg(pmpaddr_w[32*NPMP-1:0]),
-      .addr(pc), .priv_m(fetch_m), .mmwp(mmwp_w), .do_r(1'b0), .do_w(1'b0), .do_x(1'b1),
+      .addr(pc), .priv_m(fetch_m), .mmwp(mmwp_w), .mml(mml_w), .do_r(1'b0), .do_w(1'b0), .do_x(1'b1),
       .fault(pmp_fetch_fault)
     );
     kavacha_pmp #(.NPMP(NPMP)) u_pmp_ls (    // load/store check
       .cfg(pmpcfg_w[8*NPMP-1:0]), .addrreg(pmpaddr_w[32*NPMP-1:0]),
-      .addr(alu_y), .priv_m(data_m), .mmwp(mmwp_w), .do_r(d_mem_re), .do_w(d_mem_we), .do_x(1'b0),
+      .addr(alu_y), .priv_m(data_m), .mmwp(mmwp_w), .mml(mml_w), .do_r(d_mem_re), .do_w(d_mem_we), .do_x(1'b0),
       .fault(pmp_data_fault)
     );
     assign acc_fetch_fault = (state==S_EXEC) && pmp_fetch_fault;
@@ -248,18 +248,24 @@ module kavacha_core
   end endgenerate
   wire acc_fault = acc_fetch_fault | acc_load_fault | acc_store_fault;
 
+  // SECURE: in U-mode, a CSR whose privilege field (addr[9:8]) is not User, and
+  // MRET, are illegal instructions. Debug-mode CSR access is unaffected.
+  wire priv_u      = SECURE && (cur_priv == 2'b00);
+  wire priv_fault  = priv_u && ((d_is_csr && (sys_imm12[9:8] != 2'b00)) || d_is_mret);
+  wire illegal_any = d_illegal | priv_fault;
+
   // trap (priv-aware ecall cause; PMP access faults 1/5/7)
   wire ex_trap = (state==S_EXEC) &&
-                 (d_illegal | d_is_ecall | (d_is_ebreak & ~dcsr_ebreakm) | acc_fault);
+                 (illegal_any | d_is_ecall | (d_is_ebreak & ~dcsr_ebreakm) | acc_fault);
   wire [3:0] ex_cause = acc_fetch_fault ? 4'd1 :                         // instr access
-                        d_illegal        ? CAUSE_ILLEGAL :
+                        illegal_any      ? CAUSE_ILLEGAL :
                         d_is_ecall       ? (cur_priv==2'b00 ? 4'd8 : CAUSE_ECALL_M) :
                         d_is_ebreak      ? CAUSE_BREAKPOINT :
                         acc_load_fault   ? 4'd5 :                         // load access
                         acc_store_fault  ? 4'd7 : CAUSE_ILLEGAL;          // store access
   wire [XLEN-1:0] ex_tval = acc_fetch_fault               ? pc :
                             (acc_load_fault|acc_store_fault) ? alu_y :
-                            d_illegal                       ? instr : 32'b0;
+                            illegal_any                     ? instr : 32'b0;
   logic [XLEN-1:0] mtvec_w, mepc_w;
   logic [XLEN-1:0] seq_next;          // next PC ignoring interrupts (set below)
   wire             irq_req;
@@ -296,15 +302,18 @@ module kavacha_core
     .clk(clk), .rst(rst),
     .csr_addr(csr_addr_eff), .csr_rdata(csr_rdata),
     .csr_we(csr_we_eff), .csr_wdata(csr_wdata_eff),
-    .priv_o(cur_priv), .fetch_m_o(fetch_m), .data_m_o(data_m), .mmwp_o(mmwp_w),
+    .priv_o(cur_priv), .fetch_m_o(fetch_m), .data_m_o(data_m), .mmwp_o(mmwp_w), .mml_o(mml_w),
     .pmpcfg_o(pmpcfg_w), .pmpaddr_o(pmpaddr_w),
-    .trap_set((commit && ex_trap) || take_irq),
+    // A synchronous trap is taken in EXEC and needs no memory access, so record
+    // it there. (Gating on `commit` missed faulting loads: a load never commits
+    // in EXEC, so mcause/mepc/mtval were not written for load access faults.)
+    .trap_set(((state==S_EXEC) && ex_trap) || take_irq),
     .trap_cause(ex_trap ? ex_cause : irq_cause),
     .trap_interrupt(take_irq),
     .trap_epc(ex_trap ? pc : seq_next),
     .trap_tval(ex_tval),                      // mtval = faulting instr / address
     .irq_timer(irq_timer), .irq_soft(irq_soft), .irq_ext(irq_ext),
-    .mret(commit && d_is_mret), .retire(commit),
+    .mret(commit && d_is_mret && !ex_trap), .retire(commit),
     .mtvec_o(mtvec_w), .mepc_o(mepc_w),
     .irq_req(irq_req), .irq_cause(irq_cause)
   );
@@ -367,7 +376,9 @@ module kavacha_core
   wire [XLEN-1:0] jalr_t = (rdata1 + id_imm) & ~32'd1;
   always_comb begin
     seq_next = pc + {29'd0, instr_len};
-    if (commit) begin
+    // A trap is taken in EXEC even for loads, which otherwise commit later in
+    // S_LOAD; without this a faulting load was skipped instead of trapping.
+    if (commit || ((state==S_EXEC) && ex_trap)) begin
       if      (ex_trap)                       seq_next = mtvec_w;
       else if (d_is_mret)                     seq_next = mepc_w;
       else if (d_is_jal)                      seq_next = pc + id_imm;

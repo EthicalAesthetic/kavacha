@@ -41,5 +41,9 @@ jobs:
         run: bash build.sh pmp
       - name: Smepmp rules (SECURE)
         run: bash build.sh epmp
+      - name: User-mode privilege checks (SECURE)
+        run: bash build.sh upriv
+      - name: Smepmp machine mode lockdown (SECURE)
+        run: bash build.sh mml
       - name: Register-file ECC
         run: bash build.sh ecc

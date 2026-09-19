@@ -56,9 +56,9 @@ There is nothing to forward and no hazard to detect — behaviour is completely
 deterministic, and correctness is easy to establish.
 
 ###  Two-Tier Trust Model
-The optional `SECURE` configuration adds a **User privilege mode** and an **8-region Physical Memory Protection (PMP)** unit with `mseccfg` rules: Machine Mode Whitelist Policy (MMWP) and Rule Locking Bypass (RLB) are enforced.
+The optional `SECURE` configuration adds a **User privilege mode** and an **8-region Physical Memory Protection (PMP)** unit with **Smepmp** (`mseccfg`) rules: Machine Mode Lockdown (MML), Machine Mode Whitelist Policy (MMWP) and Rule Locking Bypass (RLB). With MML set, locked rules become Machine-only, unlocked rules become User-only, Machine mode cannot execute from memory that matches no rule, and new executable Machine-mode rules cannot be added. User-mode access to Machine-level CSRs and `MRET` raise illegal-instruction traps.
 
-> **Known limitations (current release):** `mseccfg.MML` (Machine Mode Lockdown) is stored but not yet enforced by the PMP checker, and the core does not yet trap User-mode access to Machine-level CSRs or `MRET`. Until these are fixed, the `SECURE` build does not provide full User/Machine isolation.
+> These checks are exercised by `./build.sh upriv` and `./build.sh mml`. The design has not had an independent security review.
 
 ###  Register File ECC
 The `SECURE` configuration replaces the plain register file with a **SECDED** (single-error-correct, double-error-detect) protected version. Each register is stored with check bits so that a single-bit upset is corrected on read and a double-bit upset is detected — critical for radiation-sensitive and reliability-critical deployments.
@@ -265,7 +265,9 @@ Expected output:
 | RVFI self-check | `rvfi` | Instruction-level trace conforms to the formal interface |
 | Debug self-check | `debug` | The Debug Module halts, inspects, and steps correctly |
 | PMP test | `pmp` | User-mode isolation and PMP enforcement |
-| Smepmp test | `epmp` | Smepmp (enhanced PMP, `mseccfg`) rules |
+| Smepmp test | `epmp` | Smepmp (enhanced PMP, `mseccfg`) MMWP rule |
+| User-privilege test | `upriv` | U-mode access to M-level CSRs and `MRET` trap as illegal |
+| MML test | `mml` | Smepmp machine mode lockdown truth table, pmpcfg and RLB write rules |
 | ECC unit test | `ecc` | The register file corrects/detects bit errors |
 | AXI4-Lite test | `axil` | Native memory bus to AXI4-Lite protocol conversion |
 | FPGA SoC test | `fpga` | Full SoC simulation with synthesizable UART and Debug Module |
