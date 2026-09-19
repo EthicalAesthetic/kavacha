@@ -125,10 +125,10 @@ if [[ "$ACTION" == "debug" ]]; then
   "$VVP" sim/tb_kavacha_debug +IMEM=programs/build/smoke.hex
 fi
 
-# ---- Verilator benchmark suite (CoreMark + EMBench-IoT) -------------------
+# ---- Verilator benchmark suite (CoreMark) -------------------
 if [[ "$ACTION" == "bench" ]]; then
-  echo "Running Kavacha benchmark suite (CoreMark + EMBench-IoT)..."
-  echo "  Verilator model + 20 benchmarks will be compiled and simulated."
+  echo "Running Kavacha benchmark suite (CoreMark)..."
+  echo "  Verilator model + CoreMark will be compiled and simulated."
   echo "  Results will appear in bench/results/report.md"
   echo ""
   if [[ -n "${RISCV_TC:-}" ]]; then
