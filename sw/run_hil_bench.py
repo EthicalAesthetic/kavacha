@@ -12,7 +12,7 @@ Options:
     --port    /dev/ttyUSB1      Serial port (default: auto-detect)
     --baud    115200            Baud rate (default: 115200)
     --bench   coremark          Benchmark name to run (default: coremark)
-                                Use 'all' to run all benchmarks sequentially.
+                                Use 'all' to run CoreMark + Dhrystone.
     --freq    100               FPGA clock frequency in MHz (default: 100)
     --timeout 60                Seconds to wait for benchmark output (default: 60)
     --out     results/          Directory to write hil_report.md (default: bench/results)
@@ -42,16 +42,8 @@ try:
 except ImportError:
     HAS_SERIAL = False
 
-# ---- Benchmark list (same order as Makefile) --------------------------------
-ALL_EMBENCH = [
-    "aha-mont64", "crc32", "edn", "huffbench", "matmult-int",
-    "nettle-aes", "nettle-sha256", "nsichneu", "picojpeg", "qrduino",
-    "sglib-combined", "slre", "tarfind", "ud", "wikisort",
-]
-
-SCALE_MAP = {
-    "picojpeg": 10, "nsichneu": 10, "qrduino": 10, "wikisort": 10
-}
+# ---- Benchmark list --------------------------------------------------------
+ALL_BENCHMARKS = ["coremark", "dhrystone"]
 
 # ---- Serial port auto-detection --------------------------------------------
 def auto_detect_port():
@@ -262,20 +254,6 @@ def generate_report(all_results, freq_mhz, out_dir):
                 f.write(f"| DMIPS/MHz | **{scores['dmips_per_mhz']:.3f}** |\n")
             f.write("\n---\n\n")
 
-        # EMBench table
-        embench_results = [r for r in all_results if r["bench"] not in ("coremark", "dhrystone")]
-        if embench_results:
-            if "## EMBench-IoT" not in existing_content:
-                f.write("## EMBench-IoT\n\n")
-                f.write("| Benchmark | Scale | Cycles | Cycles/Iter | Status |\n")
-                f.write("|-----------|-------|--------|-------------|--------|\n")
-            for r in embench_results:
-                scale = r.get("scale") or SCALE_MAP.get(r["bench"], 100)
-                cyc_per = f"{r['cycles'] / scale:,.1f}" if r["cycles"] else "—"
-                cyc = f"{r['cycles']:,}" if r["cycles"] else "—"
-                f.write(f"| {r['bench']:<22} | {scale:>5} | {cyc:>14} | {cyc_per:>11} | {r['status']} |\n")
-            # f.write("\n") # Removed so append looks cleaner
-
     # CSV
     csv_mode = "a" if os.path.exists(csv_path) else "w"
     with open(csv_path, csv_mode, newline="") as f:
@@ -283,7 +261,7 @@ def generate_report(all_results, freq_mhz, out_dir):
         if csv_mode == "w":
             writer.writeheader()
         for r in all_results:
-            scale = r.get("scale") or SCALE_MAP.get(r["bench"], 100)
+            scale = r.get("scale") or 1
             cpi = r["cycles"] / scale if r["cycles"] else None
             writer.writerow({
                 "bench": r["bench"],
@@ -302,7 +280,7 @@ def main():
     parser = argparse.ArgumentParser(description="Kavacha FPGA HIL benchmark runner")
     parser.add_argument("--port",    default=None,        help="Serial port (e.g. /dev/ttyUSB1)")
     parser.add_argument("--baud",    type=int, default=115200, help="Baud rate (default: 115200)")
-    parser.add_argument("--bench",   default="coremark",  help="Benchmark: coremark | <embench-name> | all")
+    parser.add_argument("--bench",   default="coremark",  help="Benchmark: coremark | dhrystone | all")
     parser.add_argument("--freq",    type=float, default=100.0, help="FPGA clock in MHz (default: 100)")
     parser.add_argument("--timeout", type=int, default=600, help="Per-benchmark timeout in seconds (default: 600)")
     parser.add_argument("--out",     default=None,        help="Output directory for report (default: bench/results)")
@@ -325,9 +303,7 @@ def main():
 
     # Determine which benchmarks to run
     if args.bench == "all":
-        bench_list = ["coremark"] + ALL_EMBENCH
-    elif args.bench == "embench":
-        bench_list = ALL_EMBENCH          # skip coremark, run all EMBench
+        bench_list = ALL_BENCHMARKS
     else:
         bench_list = [args.bench]
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# build_hil_bench.sh — Build CoreMark and EMBench-IoT firmware images for
+# build_hil_bench.sh — Build CoreMark and Dhrystone firmware images for
 #   Hardware-in-the-Loop (HIL) testing on the Kavacha SoC / Arty A7-100T.
 #
 # Usage:
@@ -9,14 +9,14 @@
 #
 #   BENCH (optional):
 #     coremark          — build only CoreMark
-#     <embench-name>    — build only one EMBench workload (e.g. huffbench)
-#     all  (default)    — build CoreMark + all passing EMBench workloads
+#     dhrystone         — build only Dhrystone
+#     all  (default)    — build CoreMark + Dhrystone
 #
 # Output (sw/hil_build/):
 #   coremark.mem          — $readmemh hex image for Vivado / openFPGALoader
 #   coremark.elf          — ELF (for objdump / GDB)
-#   <bench>.mem           — per-workload images for EMBench
-#   <bench>.elf
+#   dhrystone.mem
+#   dhrystone.elf
 #
 # The SoC is parameterised as MEM_WORDS=4096 (16 KB unified RAM).
 # Each image is checked that it fits inside 16 KB; the script will error if it
@@ -25,8 +25,7 @@
 # Prerequisites:
 #   riscv64-unknown-elf-gcc (or riscv-none-elf-gcc) on PATH
 #   CoreMark cloned at bench/coremark/upstream/
-#   EMBench-IoT cloned at bench/embench/upstream/
-#   (run `make -C bench fetch` first if not already present)
+#   (run `make -C bench fetch-coremark` first if not already present)
 # =============================================================================
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -64,7 +63,6 @@ SW_DIR="$ROOT/sw"
 BENCH_DIR="$ROOT/bench"
 OUT_DIR="$SW_DIR/hil_build"
 COREMARK_SRC="$BENCH_DIR/coremark/upstream"
-EMBENCH_SRC="$BENCH_DIR/embench/upstream"
 
 mkdir -p "$OUT_DIR"
 
@@ -242,65 +240,6 @@ build_dhrystone() {
 }
 
 # ---------------------------------------------------------------------------
-# EMBench — one workload
-# ---------------------------------------------------------------------------
-declare -A SCALE_MAP=(
-    [picojpeg]=10
-    [nsichneu]=10
-    [qrduino]=10
-    [wikisort]=2
-    [huffbench]=2
-)
-
-ALL_EMBENCH=(
-    aha-mont64 crc32 depthconv edn huffbench matmult-int
-    md5sum nettle-aes nettle-sha256 nsichneu picojpeg qrduino
-    sglib-combined slre statemate tarfind ud wikisort xgboost
-)
-
-build_embench_one() {
-    local bname="$1"
-    local scale="${SCALE_MAP[$bname]:-100}"
-
-    if [[ ! -d "$EMBENCH_SRC/src/$bname" ]]; then
-        echo "[HIL] SKIP: $bname — source not found (run make -C bench fetch-embench)"
-        return 0
-    fi
-
-    local srcs=(
-        "$CRT0"
-        "$SYSCALLS_FPGA"
-        "$PRINTF_C"
-        "$BENCH_DIR/embench/bench_main_fpga.c"
-        "$BENCH_DIR/embench/support/support.c"
-        "$EMBENCH_SRC/support/beebsc.c"
-    )
-    # Append all .c files from the benchmark source directory
-    while IFS= read -r f; do
-        srcs+=("$f")
-    done < <(find "$EMBENCH_SRC/src/$bname" -name "*.c" | sort)
-
-    local extra_flags=(
-        -I"$BENCH_DIR/common"
-        -I"$BENCH_DIR/embench/support"
-        -I"$EMBENCH_SRC/support"
-        -I"$EMBENCH_SRC/src/$bname"
-        "-DLOCAL_SCALE_FACTOR=$scale"
-        -DGLOBAL_SCALE_FACTOR=1
-        "-DBENCHMARK_NAME=\"$bname\""
-    )
-
-    if [[ "$bname" == "wikisort" ]]; then
-        extra_flags+=("-include" "stdbool.h")
-    fi
-
-    build_image "$bname" extra_flags "${srcs[@]}" || {
-        echo "[HIL] FAIL: $bname (may overflow 16 KB — try reducing scale)"
-        return 0   # don't abort the whole run for one benchmark
-    }
-}
-
-# ---------------------------------------------------------------------------
 # Main dispatch
 # ---------------------------------------------------------------------------
 case "$BENCH_CMD" in
@@ -313,12 +252,10 @@ case "$BENCH_CMD" in
     all)
         build_coremark
         build_dhrystone
-        for b in "${ALL_EMBENCH[@]}"; do
-            build_embench_one "$b"
-        done
         ;;
     *)
-        build_embench_one "$BENCH_CMD"
+        echo "ERROR: Unknown bench '$BENCH_CMD'. Valid options: coremark | dhrystone | all"
+        exit 1
         ;;
 esac
 

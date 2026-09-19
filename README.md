@@ -165,16 +165,6 @@ Simulated on the Verilator cycle-accurate model.
 | DMIPS / MHz | **0.274** |
 | Status | ✅ PASS |
 
-### EMBench-IoT
-
-| Metric | FPGA HIL (Arty A7 @ 50 MHz) |
-|--------|-------------------------|
-| Benchmarks run | 15 |
-| Benchmarks passed | 15 / 15 (100%) |
-| Geometric mean (cycles) | **7,122,462** |
-| Scale factor | 100 (10 for picojpeg, nsichneu, qrduino; 2 for wikisort, huffbench) |
-
-
 ###  Reproduce It Yourself
 
 All benchmark results are fully reproducible. Run these commands from the repo root:
@@ -187,14 +177,11 @@ make verilator-kavacha
 # 2. Run CoreMark
 make run-kavacha-coremark ITERATIONS=1000
 
-# 3. Run all 15 EMBench-IoT benchmarks
-make run-kavacha-embench
-
-# 4. Run Dhrystone (from its own directory)
+# 3. Run Dhrystone (from its own directory)
 cd ../dhrystone
 ./run_dhrystone.sh
 
-# 5. Generate a results report
+# 4. Generate a results report
 cd ../bench
 make report
 ```
@@ -220,10 +207,9 @@ kavacha/
 ├── programs/            Test-program builders
 ├── sw/                  Assembly test programs & bring-up firmware
 ├── fpga/                FPGA SoC + Arty A7 constraints
-├── bench/               Benchmarking suite (CoreMark, EMBench-IoT)
+├── bench/               Benchmarking suite (CoreMark)
 ├── dhrystone/           Dhrystone v2.1 benchmark
 ├── coremark/            CoreMark FPGA runners
-├── embench/             EMBench-IoT FPGA runners
 └── build.sh             Build & test driver
 ```
 
