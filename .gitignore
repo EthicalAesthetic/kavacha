@@ -80,4 +80,3 @@ sw/firmware.mem
 
 # test benchmarks
 benchmarks/coremark_sim.log
-benchmarks/embench_sim.log

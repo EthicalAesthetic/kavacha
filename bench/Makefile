@@ -1,11 +1,10 @@
 ###############################################################################
-# bench/Makefile — Kavacha benchmark suite (CoreMark + EMBench-IoT)
+# bench/Makefile — Kavacha benchmark suite (CoreMark)
 #
 # ---- Kavacha targets --------------------------------------------------------
 #   make verilator-kavacha    — build Kavacha Verilator model
 #   make run-kavacha          — run all benchmarks on Kavacha
 #   make coremark             — compile CoreMark
-#   make embench              — compile all 19 EMBench-IoT benchmarks
 #   make report               — generate benchmark report
 #   make all                  — build & run everything
 #
@@ -29,7 +28,6 @@ SIM_DIR     := $(ROOT_DIR)/sim
 RESULTS_DIR := $(BENCH_DIR)/results
 
 COREMARK_SRC := $(BENCH_DIR)/coremark/upstream
-EMBENCH_SRC  := $(BENCH_DIR)/embench/upstream
 
 # ---- Toolchain detection ----------------------------------------------------
 VERILATOR ?= verilator
@@ -84,31 +82,12 @@ CRT0 := $(BENCH_DIR)/common/crt0.S
 ITERATIONS  ?= 1000
 SCALE       ?= 100
 
-# ---- Benchmark iteration counts (EMBench benchmarks that need tuning) ------
-SCALE_picojpeg    := 10
-SCALE_nsichneu    := 10
-SCALE_qrduino     := 10
-SCALE_wikisort    := 2
-SCALE_huffbench   := 2
-
-# wikisort uses bool/true/false without #include <stdbool.h>.
-# Force-include it to fix the build without patching upstream source.
-EXTRA_CFLAGS_wikisort := -include stdbool.h
-
-scale_for = $(if $(SCALE_$(1)),$(SCALE_$(1)),$(SCALE))
-
-# ---- EMBench benchmark list (19 from embench-iot) ----------------------
-EMBENCH_BENCHMARKS := \
-    aha-mont64   crc32      depthconv  edn        huffbench  \
-    matmult-int  md5sum     nettle-aes nettle-sha256 nsichneu \
-    picojpeg     qrduino    sglib-combined slre   statemate \
-    tarfind      ud         wikisort   xgboost
 
 ###############################################################################
 # fetch — clone upstream sources
 ###############################################################################
-.PHONY: fetch fetch-coremark fetch-embench
-fetch: fetch-coremark fetch-embench
+.PHONY: fetch fetch-coremark
+fetch: fetch-coremark
 
 fetch-coremark: $(COREMARK_SRC)/.git
 
@@ -118,16 +97,6 @@ $(COREMARK_SRC)/.git:
 		git clone --depth=1 https://github.com/eembc/coremark $(COREMARK_SRC); \
 	else \
 		echo "[FETCH] CoreMark directory $(COREMARK_SRC) already exists, skipping clone."; \
-	fi
-
-fetch-embench: $(EMBENCH_SRC)/.git
-
-$(EMBENCH_SRC)/.git:
-	@if [ ! -d "$(EMBENCH_SRC)" ] || [ -z "$$(ls -A $(EMBENCH_SRC))" ]; then \
-		echo "[FETCH] Cloning EMBench-IoT..."; \
-		git clone --depth=1 https://github.com/embench/embench-iot $(EMBENCH_SRC); \
-	else \
-		echo "[FETCH] EMBench directory $(EMBENCH_SRC) already exists, skipping clone."; \
 	fi
 
 ###############################################################################
@@ -227,46 +196,6 @@ $(COREMARK_ELF): $(COREMARK_ALL_SRCS) $(CRT0) | $(BUILD_DIR) $(COREMARK_SRC)/.gi
 $(BUILD_DIR):
 	mkdir -p $@
 
-###############################################################################
-# embench — compile all 19 EMBench-IoT benchmarks
-###############################################################################
-.PHONY: embench
-embench: fetch-embench \
-    $(foreach b,$(EMBENCH_BENCHMARKS),$(BUILD_DIR)/$(b).hex)
-
-define EMBENCH_RULE
-EMBENCH_SRCS_$(1) := $$(wildcard $$(EMBENCH_SRC)/src/$(1)/*.c)
-EMBENCH_ELF_$(1)  := $$(BUILD_DIR)/$(1).elf
-EMBENCH_HEX_$(1)  := $$(BUILD_DIR)/$(1).hex
-
-EMBENCH_CFLAGS_$(1) := $$(COMMON_CFLAGS) \
-    $$(COMMON_INC) \
-    -I$$(BENCH_DIR)/embench/support \
-    -I$$(EMBENCH_SRC)/support \
-    -I$$(EMBENCH_SRC)/src/$(1) \
-    -DLOCAL_SCALE_FACTOR=$$(call scale_for,$(1)) \
-    -DGLOBAL_SCALE_FACTOR=1 \
-    -DBENCHMARK_NAME='"$(1)"' \
-    $$(EXTRA_CFLAGS_$(1))
-
-$$(EMBENCH_ELF_$(1)): $$(COMMON_SRCS) $$(CRT0) \
-                       $$(BENCH_DIR)/embench/bench_main.c \
-                       $$(BENCH_DIR)/embench/support/support.c \
-                       $$(EMBENCH_SRC)/support/beebsc.c \
-                       $$(EMBENCH_SRCS_$(1)) \
-                       | $$(BUILD_DIR) $$(EMBENCH_SRC)/.git
-	@echo "[EMBENCH] Compiling $(1) (scale=$$(call scale_for,$(1)))..."
-	$$(RISCV_GCC) $$(EMBENCH_CFLAGS_$(1)) $$(LDFLAGS) \
-	    -Wl,-Map=$$(BUILD_DIR)/$(1).map \
-	    -o $$@ $$(filter %.c %.S,$$^)
-
-$$(EMBENCH_HEX_$(1)): $$(EMBENCH_ELF_$(1))
-	$$(OBJCOPY) -O binary $$< $$(BUILD_DIR)/$(1).bin
-	python3 $$(ROOT_DIR)/sw/bin2hex.py $$(BUILD_DIR)/$(1).bin $$@
-	@echo "[EMBENCH] Hex: $$@"
-endef
-
-$(foreach b,$(EMBENCH_BENCHMARKS),$(eval $(call EMBENCH_RULE,$(b))))
 
 ###############################################################################
 # run targets
@@ -283,16 +212,6 @@ run-kavacha-coremark: $(SIM_BIN) $(COREMARK_HEX) | $(KAVACHA_RESULTS) $(RESULTS_
 	    --max-cycles $(TIMEOUT_CYCLES) \
 	    | tee $(KAVACHA_RESULTS)/coremark.log
 
-.PHONY: run-embench run-kavacha-embench
-run-embench: run-kavacha-embench
-run-kavacha-embench: $(SIM_BIN) embench | $(KAVACHA_RESULTS) $(RESULTS_DIR)
-	@for b in $(EMBENCH_BENCHMARKS); do \
-	    echo "[RUN/Kavacha] $$b..."; \
-	    $(SIM_BIN) --hex $(BUILD_DIR)/$$b.hex --name $$b \
-	        --max-cycles $(TIMEOUT_CYCLES) \
-	        | tee $(KAVACHA_RESULTS)/$$b.log; \
-	done
-
 DHRYSTONE_HEX ?= $(ROOT_DIR)/dhrystone/build/dhrystone.hex
 
 .PHONY: run-dhrystone run-kavacha-dhrystone
@@ -306,7 +225,7 @@ run-kavacha-dhrystone: $(SIM_BIN) | $(KAVACHA_RESULTS) $(RESULTS_DIR)
 
 
 .PHONY: run-kavacha run-all
-run-kavacha: run-kavacha-coremark run-kavacha-embench
+run-kavacha: run-kavacha-coremark
 run-all: run-kavacha
 
 $(RESULTS_DIR):
@@ -322,14 +241,13 @@ $(KAVACHA_RESULTS):
 report: run-kavacha | $(RESULTS_DIR)
 	python3 $(BENCH_DIR)/run_bench.py \
 	    --results-dir $(RESULTS_DIR) \
-	    --iterations $(ITERATIONS) \
-	    --scale $(SCALE)
+	    --iterations $(ITERATIONS)
 
 ###############################################################################
 # all
 ###############################################################################
 .PHONY: all
-all: fetch verilator-kavacha coremark embench run-kavacha report
+all: fetch verilator-kavacha coremark run-kavacha report
 
 ###############################################################################
 # clean / distclean / help
@@ -340,17 +258,16 @@ clean:
 	rm -rf $(V_BUILD_DIR)/Vbench_obj
 
 distclean: clean
-	rm -rf $(COREMARK_SRC) $(EMBENCH_SRC)
+	rm -rf $(COREMARK_SRC)
 
 help:
-	@echo "Kavacha Benchmark Suite (CoreMark + EMBench-IoT)"
+	@echo "Kavacha Benchmark Suite (CoreMark)"
 	@echo ""
 	@echo "  make all              — fetch + build + run + report"
-	@echo "  make fetch            — clone CoreMark and EMBench-IoT sources"
+	@echo "  make fetch            — clone CoreMark source"
 	@echo "  make verilator-kavacha — build Kavacha Verilator simulation model"
 	@echo "  make coremark         — compile CoreMark (ITERATIONS=$(ITERATIONS))"
-	@echo "  make embench          — compile all 19 EMBench-IoT benchmarks"
-	@echo "  make run-kavacha      — run CoreMark + EMBench on Kavacha"
+	@echo "  make run-kavacha      — run CoreMark on Kavacha"
 	@echo "  make report           — generate results report"
 	@echo "  make clean            — remove build/ and results/"
 	@echo "  make distclean        — also remove fetched sources"
@@ -359,4 +276,3 @@ help:
 	@echo "  RISCV_GCC=$(RISCV_GCC)"
 	@echo "  VERILATOR=$(VERILATOR)"
 	@echo "  ITERATIONS=$(ITERATIONS)"
-	@echo "  SCALE=$(SCALE)"

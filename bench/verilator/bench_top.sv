@@ -2,7 +2,7 @@
 // bench_top.sv — Benchmark SoC wrapper for Verilator.
 //
 // Functionally identical to kavacha_soc but:
-//   • IMEM/DRAM enlarged to 64 KB each (covers CoreMark + EMBench binaries)
+//   • IMEM/DRAM enlarged to 64 KB each (covers CoreMark binaries)
 //   • Memories annotated /* verilator public_flat_rw */ so C++ harness can
 //     load .hex images directly before simulation starts.
 //   • tohost / tohost_we exposed as top-level outputs.
